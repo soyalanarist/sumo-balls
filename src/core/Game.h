@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include "../game/Player.h"
 
 class Game {
 public:
@@ -12,4 +13,5 @@ private:
     void render();
 
     sf::RenderWindow window;
+    Player player;
 };

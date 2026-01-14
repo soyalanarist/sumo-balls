@@ -2,15 +2,14 @@
 #include <iostream>
 
 Game::Game()
-: window(sf::VideoMode(800, 600), "Sumo Balls")
+: window(sf::VideoMode(800, 600), "Sumo Balls"),
+  player(sf::Vector2f(400.f, 300.f))
 {
     std::cout << "Game constructed\n";
 }
 
 void Game::run()
 {
-    std::cout << "Entering game loop\n";
-
     const float dt = 1.f / 60.f;
 
     while (window.isOpen())
@@ -19,8 +18,6 @@ void Game::run()
         update(dt);
         render();
     }
-
-    std::cout << "Exiting game loop\n";
 }
 
 void Game::processInput()
@@ -31,15 +28,29 @@ void Game::processInput()
         if (event.type == sf::Event::Closed)
             window.close();
     }
+
+    sf::Vector2f direction(0.f, 0.f);
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+        direction.y -= 1.f;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+        direction.y += 1.f;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+        direction.x -= 1.f;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        direction.x += 1.f;
+
+    player.setMovementDirection(direction);
 }
 
-void Game::update(float)
+void Game::update(float dt)
 {
-    // No gameplay yet
+    player.update(dt);
 }
 
 void Game::render()
 {
     window.clear(sf::Color::Blue);
+    player.draw(window);
     window.display();
 }
