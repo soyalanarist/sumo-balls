@@ -59,18 +59,18 @@ void Game::update(float dt)
         sf::Vector2f diff = player.getPosition() - arenaCenter;
         float distance = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 
-        // If more than half of player radius is outside arena, trigger loss
-        if (distance + player.getRadius() / 2.f > arenaRadius)
-        {
+        // if more than half of player radius is outside arena, trigger loss
+        if(player.isAlive() && distance + player.getRadius() / 2.f > arenaRadius){
             std::cout << "Player lost!\n";
-            // For now, just reset player to center for testing
-            player.setPosition(arenaCenter);
+            player.setAlive(false);
+            // send player next to edge of arena
+            player.setPosition(arenaCenter + sf::Vector2f(arenaRadius + 2 * player.getRadius(), 0.f));
             player.resetVelocity();
         }
     }
 
-    for (size_t i = 0; i < players.size(); ++i){
-        for (size_t j = i + 1; j < players.size(); ++j){
+    for(size_t i = 0; i < players.size(); ++i){
+        for(size_t j = i + 1; j < players.size(); ++j){
             resolvePlayerCollision(players[i], players[j]);
         }
     }

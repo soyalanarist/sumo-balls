@@ -19,6 +19,9 @@ public:
     void setPosition(sf::Vector2f newPos);
     float getRadius() const;
 
+    bool isAlive() const;
+    void setAlive(bool state);
+
 private:
     sf::Vector2f position;
     sf::Vector2f velocity;

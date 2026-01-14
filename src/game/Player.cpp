@@ -96,3 +96,11 @@ void Player::draw(sf::RenderWindow& window)
 const sf::CircleShape& Player::getShape(){
     return shape;
 }
+
+bool Player::isAlive() const{
+    return alive;
+}
+
+void Player::setAlive(bool state){
+    alive = state;
+}
