@@ -20,6 +20,8 @@ private:
     sf::Vector2f movementDirection;
 
     float speed;
+    float acceleration;
+    float friction;
     float radius;
 
     sf::CircleShape shape;
