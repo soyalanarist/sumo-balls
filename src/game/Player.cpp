@@ -1,9 +1,10 @@
 #include "Player.h"
 
-Player::Player(sf::Vector2f startPosition):
+Player::Player(sf::Vector2f startPosition, Controller* controller):
     position(startPosition),
     velocity(sf::Vector2f(0.f, 0.f)),
     movementDirection(sf::Vector2f(0.f, 0.f)),
+    controller(controller),
     speed(30.f),
     acceleration(5.f),
     friction(1.f / 10.f),
@@ -47,45 +48,16 @@ float Player::getRadius() const{
 
 void Player::update(float dt)
 {
-    // Desired velocity
-    sf::Vector2f desiredVelocity = movementDirection * speed;
+    sf::Vector2f inputDir = controller->getMovementDirection(dt);
+    velocity += inputDir * acceleration * dt;
 
-    // Compute difference
-    sf::Vector2f diff = desiredVelocity - velocity;
-
-    // Compute change limited by acceleration
-    if (diff.x != 0.f)
-    {
-        float accelX = std::min(std::abs(diff.x), acceleration * dt);
-        velocity.x += (diff.x > 0 ? accelX : -accelX);
-    }
-    if (diff.y != 0.f)
-    {
-        float accelY = std::min(std::abs(diff.y), acceleration * dt);
-        velocity.y += (diff.y > 0 ? accelY : -accelY);
+    float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    if(speed > maxSpeed){
+        velocity = (velocity / speed) * maxSpeed;
     }
 
-    // Apply friction when no input
-    if (movementDirection.x == 0.f)
-    {
-        float frictionX = std::min(std::abs(velocity.x), friction * dt);
-        velocity.x += (velocity.x > 0 ? -frictionX : frictionX);
-    }
-    if (movementDirection.y == 0.f)
-    {
-        float frictionY = std::min(std::abs(velocity.y), friction * dt);
-        velocity.y += (velocity.y > 0 ? -frictionY : frictionY);
-    }
-
-    // Update position
     position += velocity * dt;
     shape.setPosition(position);
-
-    float maxSpeed = speed;
-    float currentSpeed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-    if (currentSpeed > maxSpeed){
-        velocity = (velocity / currentSpeed) * maxSpeed;
-    }
 }
 
 void Player::draw(sf::RenderWindow& window)
@@ -97,10 +69,14 @@ const sf::CircleShape& Player::getShape(){
     return shape;
 }
 
-bool Player::isAlive() const{
+bool Player::isAlive() const {
     return alive;
 }
 
 void Player::setAlive(bool state){
     alive = state;
+}
+
+void Player::setController(Controller* ctrl){
+    controller = ctrl;
 }
