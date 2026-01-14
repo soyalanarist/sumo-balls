@@ -6,7 +6,7 @@ Player::Player(sf::Vector2f startPosition):
     movementDirection(sf::Vector2f(0.f, 0.f)),
     speed(30.f),
     acceleration(5.f),
-    friction(1.f),
+    friction(1.f / 10.f),
     radius(15.f)
 {
     shape.setRadius(radius);
