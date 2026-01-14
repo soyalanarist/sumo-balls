@@ -13,5 +13,7 @@ private:
     void render();
 
     sf::RenderWindow window;
+    sf::Vector2f arenaCenter;
     Player player;
+    float arenaRadius;
 };

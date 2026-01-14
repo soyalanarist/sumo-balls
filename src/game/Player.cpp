@@ -4,8 +4,8 @@ Player::Player(sf::Vector2f startPosition)
 : position(startPosition),
   velocity(0.f, 0.f),
   movementDirection(0.f, 0.f),
-  speed(300.f),
-  radius(20.f)
+  speed(90.f),
+  radius(12.f)
 {
     shape.setRadius(radius);
     shape.setOrigin(radius, radius);
