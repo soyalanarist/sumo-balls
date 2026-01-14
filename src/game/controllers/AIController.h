@@ -4,6 +4,7 @@
 #include <SFML/System/Vector2.hpp>
 #include <vector>
 
+// forward declaration of Player class for compilation efficiency
 class Player;
 
 class AIController : public Controller {
@@ -14,7 +15,7 @@ public:
 
 private:
     Player* self;
-    std::vector<Player>* players;
+    std::vector<Player> *players;
 
     sf::Vector2f arenaCenter;
     float arenaRadius;

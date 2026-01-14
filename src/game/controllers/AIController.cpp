@@ -1,6 +1,6 @@
 #include "AIController.h"
-#include "../Player.h"
 #include <cmath>
+#include "../entities/Player.h"
 
 static float length(const sf::Vector2f& v) {
     return std::sqrt(v.x * v.x + v.y * v.y);
