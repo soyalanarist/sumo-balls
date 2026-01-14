@@ -19,17 +19,30 @@ void Player::setMovementDirection(sf::Vector2f direction){
     movementDirection = direction;
 }
 
-sf::Vector2f Player::getPosition() const{
-    return position;
+void Player::resetVelocity(){
+    velocity = sf::Vector2f(0.f, 0.f);
 }
 
-float Player::getRadius() const{
-    return radius;
+void Player::move(sf::Vector2f offset){
+    position += offset;
+    shape.setPosition(position);
+}
+
+void Player::addVelocity(sf::Vector2f impulse){
+    velocity += impulse;
+}
+
+sf::Vector2f Player::getPosition() const{
+    return position;
 }
 
 void Player::setPosition(sf::Vector2f newPos){
     position = newPos;
     shape.setPosition(position);
+}
+
+float Player::getRadius() const{
+    return radius;
 }
 
 void Player::update(float dt)
@@ -67,9 +80,19 @@ void Player::update(float dt)
     // Update position
     position += velocity * dt;
     shape.setPosition(position);
+
+    float maxSpeed = speed;
+    float currentSpeed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    if (currentSpeed > maxSpeed){
+        velocity = (velocity / currentSpeed) * maxSpeed;
+    }
 }
 
 void Player::draw(sf::RenderWindow& window)
 {
     window.draw(shape);
+}
+
+const sf::CircleShape& Player::getShape(){
+    return shape;
 }

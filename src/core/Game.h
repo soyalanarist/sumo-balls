@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include "../game/Player.h"
+#include <vector>
 
 class Game {
 public:
@@ -12,8 +13,10 @@ private:
     void update(float dt);
     void render();
 
+    void resolvePlayerCollision(Player& a, Player& b);
+
+    std::vector<Player> players;
     sf::RenderWindow window;
     sf::Vector2f arenaCenter;
-    Player player;
     float arenaRadius;
 };
