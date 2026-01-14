@@ -1,7 +1,8 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include "../game/Player.h"
+#include "../game/entities/Player.h"
+#include "../game/entities/Arena.h"
 #include <vector>
 #include <memory>
 
@@ -17,10 +18,10 @@ private:
 
     void resolvePlayerCollision(Player& a, Player& b);
 
+    sf::RenderWindow window;
+
+    Arena arena;
+
     std::vector<Player> players;
     std::vector<std::unique_ptr<Controller>> controllers;
-
-    sf::RenderWindow window;
-    sf::Vector2f arenaCenter;
-    float arenaRadius;
 };

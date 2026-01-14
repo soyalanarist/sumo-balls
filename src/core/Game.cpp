@@ -3,11 +3,14 @@
 #include "../game/controllers/HumanController.h"
 #include "../game/controllers/AIController.h"
 
-Game::Game(){
+Game::Game():
+    arena(sf::Vector2f(600.f, 450.f), 400.f)
+{
     window.create(sf::VideoMode(1200, 900), "Sumo Balls");
-    arenaCenter = sf::Vector2f(600.f, 450.f);
-    arenaRadius = 300.f;
     std::cout << "Game constructed\n";
+
+    sf::Vector2 arenaCenter = arena.getCenter();
+    float arenaRadius = arena.getRadius();
 
     players.emplace_back(sf::Vector2f(arenaCenter.x - 2 * 15, arenaCenter.y - 2 * 15), nullptr); // Human player
     players.emplace_back(sf::Vector2f(arenaCenter.x + 2 * 15, arenaCenter.y + 2 * 15), nullptr); // AI player 1
@@ -46,11 +49,11 @@ void Game::update(float dt){
         player.update(dt);
 
         // Distance from arena center
-        sf::Vector2f toCenter = player.getPosition() - arenaCenter;
+        sf::Vector2f toCenter = player.getPosition() - arena.getCenter();
         float distanceToCenter = std::sqrt(toCenter.x * toCenter.x + toCenter.y * toCenter.y);
 
         // if more than half of player radius is outside arena, trigger loss
-        if(distanceToCenter + player.getRadius() > arenaRadius){
+        if(distanceToCenter + player.getRadius() > arena.getRadius()){
             std::cout << "Player lost!\n";
             player.setAlive(false);
             player.resetVelocity();
@@ -67,9 +70,9 @@ void Game::update(float dt){
 void Game::render(){
     window.clear(sf::Color::Black);
 
-    sf::CircleShape arenaShape(arenaRadius);
-    arenaShape.setOrigin(arenaRadius, arenaRadius);
-    arenaShape.setPosition(arenaCenter);
+    sf::CircleShape arenaShape(arena.getRadius());
+    arenaShape.setOrigin(arena.getRadius(), arena.getRadius());
+    arenaShape.setPosition(arena.getCenter());
     arenaShape.setFillColor(sf::Color(50, 50, 50));
     arenaShape.setOutlineThickness(5.f);
     arenaShape.setOutlineColor(sf::Color::White);
