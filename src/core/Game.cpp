@@ -54,6 +54,19 @@ void Game::processInput()
 void Game::update(float dt)
 {
     player.update(dt);
+
+    // Distance from arena center
+    sf::Vector2f diff = player.getPosition() - arenaCenter;
+    float distance = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+
+    // If more than half of player radius is outside arena, trigger loss
+    if (distance + player.getRadius() / 2.f > arenaRadius)
+    {
+        std::cout << "Player has left the arena! Player loses!\n";
+        // For now, just reset player to center for testing
+        player.setPosition(arenaCenter);
+    }
+
 }
 
 void Game::render()

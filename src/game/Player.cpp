@@ -13,9 +13,21 @@ Player::Player(sf::Vector2f startPosition)
     shape.setPosition(position);
 }
 
-void Player::setMovementDirection(sf::Vector2f direction)
-{
+void Player::setMovementDirection(sf::Vector2f direction){
     movementDirection = direction;
+}
+
+sf::Vector2f Player::getPosition() const{
+    return position;
+}
+
+float Player::getRadius() const{
+    return radius;
+}
+
+void Player::setPosition(sf::Vector2f newPos){
+    position = newPos;
+    shape.setPosition(position);
 }
 
 void Player::update(float dt)

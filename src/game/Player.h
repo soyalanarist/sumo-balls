@@ -10,6 +10,10 @@ public:
 
     void setMovementDirection(sf::Vector2f direction);
 
+    sf::Vector2f getPosition() const;
+    float getRadius() const;
+    void setPosition(sf::Vector2f newPos);
+
 private:
     sf::Vector2f position;
     sf::Vector2f velocity;
