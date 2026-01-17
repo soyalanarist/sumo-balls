@@ -5,16 +5,13 @@ class Arena {
 public:
     Arena(sf::Vector2f center, float radius);
 
-    const sf::Vector2f& getCenter() const;
+    bool contains(sf::Vector2f pos, float margin = 0.f) const;
+    sf::Vector2f getCenter() const;
     float getRadius() const;
 
-    // Check if a position is outside the arena (more than half radius)
-    bool isOutside(const sf::Vector2f& position, float playerRadius) const;
+    void render(sf::RenderWindow& window) const;
 
-    // Render the arena to the window
-    void draw(sf::RenderWindow& window) const;
-
-private:
+public:
     sf::Vector2f center;
     float radius;
     sf::CircleShape shape;
