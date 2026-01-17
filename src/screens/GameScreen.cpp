@@ -15,11 +15,17 @@ GameScreen::GameScreen():
     players.emplace_back(sf::Vector2f(800.f, 450.f), std::move(aiCtrl));
 }
 
-void GameScreen::update(sf::Time dt, sf::RenderWindow&) {
+void GameScreen::update(sf::Time dt, sf::RenderWindow& window) {
     try {
         frameCount++;
         
-        // Pre-allocate positions vector to avoid repeated allocations
+        // Check for pause key (P)
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::P)) {
+            menuAction = MenuAction::PAUSE;
+            return;  // Don't update game state if pausing
+        }
+        
+        menuAction = MenuAction::NONE;  // Clear any pending actions
         positions.clear();
         positions.reserve(players.size());
         for(auto& p : players){
@@ -122,14 +128,21 @@ void GameScreen::render(sf::RenderWindow& window) {
 }
 
 MenuAction GameScreen::getMenuAction() const {
-    if(gameOver && gameOverTime >= 0.7f) {
-        return MenuAction::MAIN_MENU;  // Return to main menu after particles finish fading
+    // Return pause action if requested
+    if(menuAction == MenuAction::PAUSE) {
+        return MenuAction::PAUSE;
     }
+    
+    // Return main menu action after game is over and particles finished
+    if(gameOver && gameOverTime >= 0.7f) {
+        return MenuAction::MAIN_MENU;
+    }
+    
     return MenuAction::NONE;
 }
 
 void GameScreen::resetMenuAction() {
-    gameOverAction = MenuAction::NONE;
+    menuAction = MenuAction::NONE;
 }
 
 void GameScreen::createExplosion(sf::Vector2f position, sf::Vector2f velocity) {

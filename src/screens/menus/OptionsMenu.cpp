@@ -1,7 +1,7 @@
 #include "OptionsMenu.h"
 #include "../../core/Settings.h"
 
-OptionsMenu::OptionsMenu(sf::Font& f) {
+OptionsMenu::OptionsMenu(sf::Font& f, bool isOverlay) : overlay(isOverlay) {
     // Title
     titleText.setFont(f);
     titleText.setString("Options");
@@ -52,12 +52,20 @@ void OptionsMenu::update(sf::Time /*deltaTime*/, sf::RenderWindow& window) {
     }
 
     if (buttons[0].wasClicked()) {
-        action = MenuAction::MAIN_MENU;
+        // Back button behavior depends on context
+        action = overlay ? MenuAction::RESUME : MenuAction::MAIN_MENU;
         buttons[0].reset();
     }
 }
 
 void OptionsMenu::render(sf::RenderWindow& window) {
+    // If this is an overlay (from pause), draw blur background
+    if (overlay) {
+        sf::RectangleShape blurOverlay({1200.f, 900.f});
+        blurOverlay.setFillColor(sf::Color(0, 0, 0, 150));  // Dark semi-transparent overlay
+        window.draw(blurOverlay);
+    }
+
     window.draw(titleText);
     window.draw(statusText);
     window.draw(labelText);

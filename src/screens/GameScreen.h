@@ -37,5 +37,5 @@ private:
     int frameCount = 0;  // Instance member instead of static
     bool gameOver = false;
     float gameOverTime = 0.f;             // Time since game ended
-    MenuAction gameOverAction = MenuAction::NONE;
+    MenuAction menuAction = MenuAction::NONE;  // Track requested menu action
 };

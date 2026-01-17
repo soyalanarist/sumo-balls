@@ -48,9 +48,12 @@ void ScreenStack::update(sf::Time deltaTime) {
                 pop();
                 push(std::make_unique<GameScreen>());
                 break;
-            case MenuAction::OPTIONS:
-                push(std::make_unique<OptionsMenu>(font));
+            case MenuAction::OPTIONS: {
+                // Check if we're in a game (overlay) or in menu
+                bool isGameOverlay = screens.back()->isOverlay();
+                push(std::make_unique<OptionsMenu>(font, isGameOverlay));
                 break;
+            }
             case MenuAction::QUIT:
                 window.close();
                 break;
@@ -75,7 +78,20 @@ void ScreenStack::update(sf::Time deltaTime) {
 }
 
 void ScreenStack::render(sf::RenderWindow& window) {
-    for(auto& screen : screens){
-        screen->render(window);
+    // Render from bottom up, but skip screens that are underneath non-overlay screens
+    for(int i = 0; i < static_cast<int>(screens.size()); i++){
+        // Check if any screen above this one is non-overlay
+        bool hasNonOverlayAbove = false;
+        for(int j = i + 1; j < static_cast<int>(screens.size()); j++){
+            if(!screens[j]->isOverlay()){
+                hasNonOverlayAbove = true;
+                break;
+            }
+        }
+        
+        // Only skip this screen if there's a non-overlay screen above it
+        if(!hasNonOverlayAbove){
+            screens[i]->render(window);
+        }
     }
 }
