@@ -1,4 +1,5 @@
 #include "GameScreen.h"
+#include "menus/GameOverMenu.h"
 #include "../game/controllers/HumanController.h"
 #include "../game/controllers/AIController.h"
 #include <SFML/Graphics.hpp>
@@ -32,6 +33,38 @@ void GameScreen::update(sf::Time dt, sf::RenderWindow&) {
         }
         
         resolvePlayerCollisions();
+        
+        // Check arena boundaries - mark players as dead if 50% outside arena
+        for(auto& p : players) {
+            if(p.isAlive()) {
+                sf::Vector2f playerPos = p.getPosition();
+                float playerRadius = p.getRadius();
+                
+                // Distance from player center to arena center
+                float dx = playerPos.x - arena.center.x;
+                float dy = playerPos.y - arena.center.y;
+                float distToCenter = std::sqrt(dx * dx + dy * dy);
+                
+                // Player is dead if their center is more than (arenaRadius + 50% of playerRadius) away
+                float deathDistance = arena.radius + playerRadius * 0.5f;
+                
+                if(distToCenter > deathDistance) {
+                    p.setAlive(false);
+                }
+            }
+        }
+        
+        // Check if game is over (only one player alive)
+        if(!gameOver) {
+            int aliveCount = 0;
+            for(auto& p : players) {
+                if(p.isAlive()) aliveCount++;
+            }
+            
+            if(aliveCount <= 1) {
+                gameOver = true;
+            }
+        }
     } catch(const std::exception& e) {
         throw;
     } catch(...) {
@@ -48,11 +81,32 @@ void GameScreen::render(sf::RenderWindow& window) {
                 playerEntity.render(window);
             }
         }
+        
+        // If game is over, show overlay message
+        if(gameOver) {
+            // Draw semi-transparent overlay
+            sf::RectangleShape overlay({1200.f, 900.f});
+            overlay.setFillColor(sf::Color(0, 0, 0, 100));
+            window.draw(overlay);
+            
+            // Note: Menu will be handled by ScreenStack when we return to main menu
+        }
     } catch(const std::exception& e) {
         throw;
     } catch(...) {
         throw;
     }
+}
+
+MenuAction GameScreen::getMenuAction() const {
+    if(gameOver) {
+        return MenuAction::MAIN_MENU;  // Return to main menu when game ends
+    }
+    return MenuAction::NONE;
+}
+
+void GameScreen::resetMenuAction() {
+    gameOverAction = MenuAction::NONE;
 }
 
 void GameScreen::resolvePlayerCollisions() {
