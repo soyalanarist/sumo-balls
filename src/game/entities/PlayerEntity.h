@@ -1,0 +1,43 @@
+#pragma once
+#include "Player.h"
+#include "../controllers/Controller.h"
+#include <memory>
+#include <vector>
+
+class PlayerEntity {
+public:
+    PlayerEntity(
+        sf::Vector2f startPos,
+        std::unique_ptr<Controller> controller
+    );
+    
+    // Move semantics
+    PlayerEntity(PlayerEntity&& other) noexcept = default;
+    PlayerEntity& operator=(PlayerEntity&& other) noexcept = default;
+    
+    // Delete copy semantics since we have unique_ptr
+    PlayerEntity(const PlayerEntity&) = delete;
+    PlayerEntity& operator=(const PlayerEntity&) = delete;
+
+    void update(
+        float dt,
+        const std::vector<sf::Vector2f>& otherPlayers,
+        const sf::Vector2f& arenaCenter,
+        float arenaRadius
+    );
+
+    void render(sf::RenderWindow& window);
+
+    sf::Vector2f getPosition() const;
+    float getRadius() const;
+    sf::Vector2f getVelocity() const;
+    void move(sf::Vector2f offset);
+    void addVelocity(sf::Vector2f impulse);
+
+    bool isAlive() const;
+    void setAlive(bool alive);
+
+private:
+    Player player;
+    std::unique_ptr<Controller> controller;
+};
