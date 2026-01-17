@@ -56,7 +56,8 @@ void GameScreen::render(sf::RenderWindow& window) {
 }
 
 void GameScreen::resolvePlayerCollisions() {
-    const float COLLISION_ELASTICITY = 0.8f;  // Energy retention on collision
+    const float COLLISION_ELASTICITY = 1.5f;  // Energy amplification for bouncy collisions
+    const float KNOCKBACK_MULTIPLIER = 1.2f;  // Additional boost for impact feel
     
     for(size_t i = 0; i < players.size(); i++) {
         for(size_t j = i + 1; j < players.size(); j++) {
@@ -76,29 +77,32 @@ void GameScreen::resolvePlayerCollisions() {
             if(distance < minDistance && distance > 0.001f) {
                 // Collision detected - push players apart
                 float overlap = minDistance - distance;
-                float pushDistance = overlap / 2.0f + 0.1f;  // Small extra to prevent overlap
+                float pushDistance = overlap / 2.0f + 0.5f;  // Increased separation force
                 
                 // Normalized direction
                 float nx = dx / distance;
                 float ny = dy / distance;
                 
-                // Push players apart
+                // Push players apart with stronger force
                 players[i].move(sf::Vector2f(-nx * pushDistance, -ny * pushDistance));
                 players[j].move(sf::Vector2f(nx * pushDistance, ny * pushDistance));
                 
-                // Exchange velocity components along collision normal (simplified impulse response)
+                // Calculate relative velocity for more realistic collision response
                 sf::Vector2f vel1 = players[i].getVelocity();
                 sf::Vector2f vel2 = players[j].getVelocity();
                 
                 float vel1Normal = vel1.x * nx + vel1.y * ny;
                 float vel2Normal = vel2.x * nx + vel2.y * ny;
                 
-                // Only apply if moving toward each other
+                // Apply bounceback only if moving toward each other
                 if(vel1Normal > vel2Normal) {
-                    float avgVel = (vel1Normal + vel2Normal) * 0.5f * COLLISION_ELASTICITY;
+                    // Calculate restitution - how much velocity is transferred
+                    float relativeVelocity = vel1Normal - vel2Normal;
+                    float restitution = COLLISION_ELASTICITY * relativeVelocity * KNOCKBACK_MULTIPLIER;
                     
-                    sf::Vector2f impulse1(-(vel1Normal - avgVel) * nx, -(vel1Normal - avgVel) * ny);
-                    sf::Vector2f impulse2((vel2Normal - avgVel) * nx, (vel2Normal - avgVel) * ny);
+                    // Apply impulses (stronger for more noticeable bounceback)
+                    sf::Vector2f impulse1(-restitution * nx, -restitution * ny);
+                    sf::Vector2f impulse2(restitution * nx, restitution * ny);
                     
                     players[i].addVelocity(impulse1);
                     players[j].addVelocity(impulse2);
