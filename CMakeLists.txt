@@ -12,10 +12,14 @@ add_executable(sumo_balls
     src/core/Game.cpp
     src/core/Screen.cpp
     src/core/ScreenStack.cpp
+    src/core/Settings.cpp
+    src/ui/UIElement.cpp
     src/ui/Button.cpp
+    src/ui/ToggleSwitch.cpp
 
     src/screens/GameScreen.cpp
     src/screens/menus/MainMenu.cpp
+    src/screens/menus/OptionsMenu.cpp
     src/screens/menus/PauseMenu.cpp
     src/screens/menus/GameOverMenu.cpp
 

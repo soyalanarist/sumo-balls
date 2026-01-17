@@ -4,7 +4,7 @@ Player::Player(sf::Vector2f startPosition):
     position(startPosition),
     velocity(sf::Vector2f(0.f, 0.f)),
     movementDirection(sf::Vector2f(0.f, 0.f)),
-    speed(140.f),           // Base acceleration speed
+    speed(100.f),           // Base acceleration speed
     acceleration(30.f),    // Acceleration multiplier
     friction(0.002f),        // Very low friction (~.2% decay per frame) for strong momentum
     radius(15.f)

@@ -60,9 +60,9 @@ void GameScreen::update(sf::Time dt, sf::RenderWindow&) {
         updateParticles(dt.asSeconds());
         
         // Check if game is over (only one player alive)
-        if(!gameOver) {
+        if(!gameOver){
             int aliveCount = 0;
-            for(auto& p : players) {
+            for(auto& p : players){
                 if(p.isAlive()) aliveCount++;
             }
             

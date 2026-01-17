@@ -1,5 +1,6 @@
 #include "ScreenStack.h"
 #include "../screens/menus/MainMenu.h"
+#include "../screens/menus/OptionsMenu.h"
 #include "../screens/menus/PauseMenu.h"
 #include "../screens/menus/MenuAction.h"
 #include "../screens/GameScreen.h"
@@ -48,7 +49,7 @@ void ScreenStack::update(sf::Time deltaTime) {
                 push(std::make_unique<GameScreen>());
                 break;
             case MenuAction::OPTIONS:
-                // push(std::make_unique<OptionsMenu>(font));
+                push(std::make_unique<OptionsMenu>(font));
                 break;
             case MenuAction::QUIT:
                 window.close();

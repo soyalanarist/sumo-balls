@@ -1,4 +1,5 @@
 #include "HumanController.h"
+#include "../../core/Settings.h"
 #include <SFML/Window/Keyboard.hpp>
 #include <cmath>
 #include <vector>
@@ -18,10 +19,20 @@ sf::Vector2f HumanController::getMovementDirection(
 ) {
     sf::Vector2f dir{0.f, 0.f};
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) dir.y -= 1.f;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) dir.y += 1.f;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) dir.x -= 1.f;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) dir.x += 1.f;
+    if (Settings::leftyMode) {
+        // IJKL layout for lefty mode
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::I)) dir.y -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::K)) dir.y += 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::J)) dir.x -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::L)) dir.x += 1.f;
+    } else {
+        // WASD layout (default)
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) dir.y -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) dir.y += 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) dir.x -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) dir.x += 1.f;
+    }
 
     return normalize(dir);
 }
+

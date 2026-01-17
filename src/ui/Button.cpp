@@ -4,14 +4,9 @@ Button::Button(
     sf::Font& font,
     const std::string& text,
     sf::Vector2f size,
-    sf::Vector2f position
-) {
-    background.setSize(size);
-    background.setPosition(position);
-    background.setFillColor(normalColor);
-    background.setOutlineThickness(2.f);
-    background.setOutlineColor(outlineColor);
-
+    sf::Vector2f position,
+    const std::string& tooltip
+) : UIElement(position, size), tooltipContent(tooltip) {
     label.setFont(font);
     label.setString(text);
     label.setCharacterSize(24);
@@ -27,42 +22,34 @@ Button::Button(
         position.x + size.x / 2.f,
         position.y + size.y / 2.f
     );
-}
 
-void Button::update(const sf::RenderWindow& window) {
-    hovered = false;
-    clicked = false;
-
-    sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-    sf::Vector2f mouseWorld(
-        static_cast<float>(mousePos.x),
-        static_cast<float>(mousePos.y)
-    );
-
-    bool isMouseDown = sf::Mouse::isButtonPressed(sf::Mouse::Left);
-
-    if (background.getGlobalBounds().contains(mouseWorld)) {
-        hovered = true;
-
-        // Click happens when mouse button transitions from down to up while hovering
-        if (wasMouseDownLastFrame && !isMouseDown) {
-            clicked = true;
-        }
-    }
-
-    wasMouseDownLastFrame = isMouseDown;
-    background.setFillColor(hovered ? hoverColor : normalColor);
+    // Setup tooltip text
+    tooltipText.setFont(font);
+    tooltipText.setString(tooltip);
+    tooltipText.setCharacterSize(14);
+    tooltipText.setFillColor(sf::Color::Yellow);
 }
 
 void Button::render(sf::RenderWindow& window) {
     window.draw(background);
     window.draw(label);
-}
 
-bool Button::wasClicked() {
-    return clicked;
-}
+    // Draw tooltip if hovered and tooltip exists
+    if (hovered && !tooltipContent.empty()) {
+        sf::Vector2f buttonPos = background.getPosition();
+        float tooltipX = buttonPos.x + background.getSize().x / 2.f - 100.f;
+        float tooltipY = buttonPos.y - 60.f;
 
-void Button::reset() {
-    clicked = false;
+        tooltipText.setPosition(tooltipX, tooltipY);
+        
+        // Draw background for tooltip
+        sf::RectangleShape tooltipBg({200.f, 50.f});
+        tooltipBg.setPosition(tooltipX - 5.f, tooltipY - 5.f);
+        tooltipBg.setFillColor(sf::Color(30, 30, 30, 200));
+        tooltipBg.setOutlineThickness(1.f);
+        tooltipBg.setOutlineColor(sf::Color::Yellow);
+        
+        window.draw(tooltipBg);
+        window.draw(tooltipText);
+    }
 }
