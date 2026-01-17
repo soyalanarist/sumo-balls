@@ -1,11 +1,17 @@
 #pragma once
 
 #include <SFML/System/Vector2.hpp>
+#include <vector>
 
 class Controller {
 public:
     virtual ~Controller() = default;
 
-    // Returns a normalized movement direction (or {0,0})
-    virtual sf::Vector2f getMovementDirection(float dt) = 0;
+    virtual sf::Vector2f getMovementDirection(
+        float dt,
+        const sf::Vector2f& selfPosition,
+        const std::vector<sf::Vector2f>& otherPlayers,
+        const sf::Vector2f& arenaCenter,
+        float arenaRadius
+    ) = 0;
 };

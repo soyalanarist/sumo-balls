@@ -1,14 +1,21 @@
 #include "HumanController.h"
 #include <SFML/Window/Keyboard.hpp>
 #include <cmath>
+#include <vector>
 
-static sf::Vector2f normalize(const sf::Vector2f& v) {
+static sf::Vector2f normalize(const sf::Vector2f& v){
     float len = std::sqrt(v.x * v.x + v.y * v.y);
     if (len == 0.f) return {0.f, 0.f};
     return {v.x / len, v.y / len};
 }
 
-sf::Vector2f HumanController::getMovementDirection(float) {
+sf::Vector2f HumanController::getMovementDirection(
+    float /*dt*/,
+    const sf::Vector2f& /*selfPosition*/,
+    const std::vector<sf::Vector2f>& /*otherPlayers*/,
+    const sf::Vector2f& /*arenaCenter*/,
+    float /*arenaRadius*/
+) {
     sf::Vector2f dir{0.f, 0.f};
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) dir.y -= 1.f;
