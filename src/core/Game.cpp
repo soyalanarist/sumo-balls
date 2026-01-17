@@ -1,107 +1,57 @@
 #include "Game.h"
-#include <iostream>
 #include "../game/controllers/HumanController.h"
 #include "../game/controllers/AIController.h"
+#include "../screens/menus/MainMenu.h"
+#include "../screens/menus/PauseMenu.h"
+#include "../screens/menus/GameOverMenu.h"
+#include "../screens/menus/MenuAction.h"
 
-Game::Game():
-    arena(sf::Vector2f(600.f, 450.f), 400.f)
-{
-    window.create(sf::VideoMode(1200, 900), "Sumo Balls");
-    std::cout << "Game constructed\n";
-
-    sf::Vector2 arenaCenter = arena.getCenter();
-    float arenaRadius = arena.getRadius();
-
-    players.emplace_back(sf::Vector2f(arenaCenter.x - 2 * 15, arenaCenter.y - 2 * 15), nullptr); // Human player
-    players.emplace_back(sf::Vector2f(arenaCenter.x + 2 * 15, arenaCenter.y + 2 * 15), nullptr); // AI player 1
-
-    controllers.push_back(std::make_unique<HumanController>());
-    players[0].setController(controllers[0].get());
-
-    controllers.push_back(std::make_unique<AIController>(&players[1], &players, arenaCenter, arenaRadius));
-    players[1].setController(controllers[1].get());
-}
-
-void Game::run(){
-    const float dt = 1.f / 60.f;
-
-    while (window.isOpen())
-    {
-        processInput();
-        update(dt);
-        render();
+Game::Game() : screens(window, font){
+    window.create({1200, 900}, "Sumo Balls");
+    if(!window.isOpen()) {
+        throw std::runtime_error("Failed to create game window");
     }
+    
+    if(!font.loadFromFile("assets/arial.ttf")) {
+        throw std::runtime_error("Failed to load font: assets/arial.ttf");
+    }
+
+    screens.push(std::make_unique<MainMenu>(font));
 }
 
-void Game::processInput(){
-    sf::Event event;
-    while (window.pollEvent(event)){
-        if(event.type == sf::Event::Closed){
+void Game::run() {
+    sf::Clock clock;
+
+    while(window.isOpen()){
+        sf::Time deltaTime = clock.restart();
+
+        sf::Event event;
+        while(window.pollEvent(event)){
+            if(event.type == sf::Event::Closed){
+                window.close();
+            }
+        }
+
+        try {
+            screens.update(deltaTime);
+        } catch(const std::exception& e) {
             window.close();
+            break;
+        } catch(...) {
+            window.close();
+            break;
+        }
+        
+        try {
+            window.clear();
+            screens.render(window);
+            window.display();
+        } catch(const std::exception& e) {
+            window.close();
+            break;
+        } catch(...) {
+            window.close();
+            break;
         }
     }
-}
-
-void Game::update(float dt){
-    for(auto& player : players){
-        if(!player.isAlive()){continue;}
-
-        player.update(dt);
-
-        // Distance from arena center
-        sf::Vector2f toCenter = player.getPosition() - arena.getCenter();
-        float distanceToCenter = std::sqrt(toCenter.x * toCenter.x + toCenter.y * toCenter.y);
-
-        // if more than half of player radius is outside arena, trigger loss
-        if(distanceToCenter + player.getRadius() > arena.getRadius()){
-            std::cout << "Player lost!\n";
-            player.setAlive(false);
-            player.resetVelocity();
-        }
-    }
-
-    for(size_t i = 0; i < players.size(); ++i){
-        for(size_t j = i + 1; j < players.size(); ++j){
-            resolvePlayerCollision(players[i], players[j]);
-        }
-    }
-}
-
-void Game::render(){
-    window.clear(sf::Color::Black);
-
-    sf::CircleShape arenaShape(arena.getRadius());
-    arenaShape.setOrigin(arena.getRadius(), arena.getRadius());
-    arenaShape.setPosition(arena.getCenter());
-    arenaShape.setFillColor(sf::Color(50, 50, 50));
-    arenaShape.setOutlineThickness(5.f);
-    arenaShape.setOutlineColor(sf::Color::White);
-    window.draw(arenaShape);
-
-    for(auto& player : players){
-        window.draw(player.getShape());
-    }
-    window.display();
-}
-
-void Game::resolvePlayerCollision(Player& a, Player& b){
-    sf::Vector2f diff = b.getPosition() - a.getPosition();
-    float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
-    float minDist = a.getRadius() + b.getRadius();
-
-    if (dist == 0.f || dist >= minDist)
-        return;
-
-    // Normalize collision normal
-    sf::Vector2f normal = diff / dist;
-
-    // Push players apart
-    float penetration = minDist - dist;
-    a.move(-normal * penetration * 0.5f);
-    b.move( normal * penetration * 0.5f);
-
-    // Knockback impulse
-    float knockbackStrength = 100.f;
-    a.addVelocity(-normal * knockbackStrength);
-    b.addVelocity( normal * knockbackStrength);
 }

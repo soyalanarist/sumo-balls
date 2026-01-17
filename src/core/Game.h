@@ -1,10 +1,9 @@
-#pragma once
+#include "ScreenStack.h"
 
-#include <SFML/Graphics.hpp>
-#include "../game/entities/Player.h"
-#include "../game/entities/Arena.h"
-#include <vector>
-#include <memory>
+enum class GameState {
+    MENU,
+    PLAYING
+};
 
 class Game {
 public:
@@ -12,16 +11,8 @@ public:
     void run();
 
 private:
-    void processInput();
-    void update(float dt);
-    void render();
-
-    void resolvePlayerCollision(Player& a, Player& b);
-
     sf::RenderWindow window;
-
-    Arena arena;
-
-    std::vector<Player> players;
-    std::vector<std::unique_ptr<Controller>> controllers;
+    sf::Font font;
+    ScreenStack screens;
+    // GameState state;
 };
