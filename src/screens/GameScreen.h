@@ -36,7 +36,11 @@ private:
     std::vector<Particle> particles;      // Explosion particles
     int frameCount = 0;  // Instance member instead of static
     float gameTime = 0.f;                 // Total elapsed game time
+    float countdownTime = 3.0f;           // Countdown before game starts
+    bool countdownActive = true;          // Whether countdown is running
     bool gameOver = false;
     float gameOverTime = 0.f;             // Time since game ended
+    float initialArenaRadius = 300.f;     // Starting arena radius for speed scaling
     MenuAction menuAction = MenuAction::NONE;  // Track requested menu action
+    float getSpeedMultiplier() const;     // Calculate speed multiplier based on shrinkage
 };

@@ -24,7 +24,8 @@ public:
         float dt,
         const std::vector<sf::Vector2f>& otherPlayers,
         const sf::Vector2f& arenaCenter,
-        float arenaRadius
+        float arenaRadius,
+        float speedMultiplier = 1.0f
     );
 
     void render(sf::RenderWindow& window);
@@ -35,6 +36,7 @@ public:
     sf::Vector2f getVelocity() const;
     void move(sf::Vector2f offset);
     void addVelocity(sf::Vector2f impulse);
+    void setMassMultiplier(float multiplier);  // For gameplay balance
 
     bool isAlive() const;
     void setAlive(bool alive);

@@ -6,7 +6,7 @@ class Player {
 public:
     Player(sf::Vector2f startPosition, sf::Color color = sf::Color::White);
 
-    void update(float dt);
+    void update(float dt, float speedMultiplier = 1.0f);
     void render(sf::RenderWindow& window);
     const sf::CircleShape& getShape();
 
@@ -20,6 +20,7 @@ public:
     void setPosition(sf::Vector2f newPos);
     float getRadius() const;
     float getMass() const;  // Mass based on radius (volume)
+    void setMassMultiplier(float multiplier);  // Adjust mass for gameplay balance
     
     bool isAlive() const;
     void setAlive(bool state);
@@ -34,6 +35,7 @@ private:
     float acceleration;
     float friction;
     float radius;
+    float massMultiplier = 1.0f;  // Mass multiplier for gameplay balance
 
     bool alive = true;
 

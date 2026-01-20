@@ -9,8 +9,8 @@ Player::Player(sf::Vector2f startPosition, sf::Color color):
     friction(0.002f),        // Very low friction (~.2% decay per frame) for strong momentum
     radius(18.f)
 {
-    // initialize shape with 180 points for very smooth circle
-    shape.setPointCount(180);
+    // initialize shape with 1000 points for ultra-smooth circle
+    shape.setPointCount(1000);
     shape.setRadius(radius);
     shape.setOrigin(radius, radius);
     shape.setFillColor(color);
@@ -23,13 +23,13 @@ void Player::setMovementDirection(sf::Vector2f direction){
     movementDirection = direction;
 }
 
-void Player::update(float dt) {
+void Player::update(float dt, float speedMultiplier) {
     // Clamp dt to valid range instead of skipping frame
     if(dt <= 0.f) dt = 0.016f;  // Default to ~60 FPS
     if(dt > 0.1f) dt = 0.1f;    // Cap at 100ms
     
-    // Apply movement direction to velocity
-    velocity += movementDirection * speed * acceleration * dt;
+    // Apply movement direction to velocity, scaled by speed multiplier
+    velocity += movementDirection * speed * acceleration * speedMultiplier * dt;
     
     // Apply friction
     velocity *= (1.f - friction);
@@ -91,7 +91,11 @@ float Player::getMass() const {
     // Mass proportional to volume (4/3 * pi * r^3)
     // Simplified: mass = k * r^3, where k is a constant
     const float DENSITY = 1.0f;  // Arbitrary unit density
-    return DENSITY * radius * radius * radius;
+    return DENSITY * radius * radius * radius * massMultiplier;
+}
+
+void Player::setMassMultiplier(float multiplier) {
+    massMultiplier = multiplier;
 }
 
 void Player::render(sf::RenderWindow& window)

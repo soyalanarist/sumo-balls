@@ -8,7 +8,8 @@
 #include <cmath>
 
 GameScreen::GameScreen():
-    arena({600.f, 450.f}, 300.f){
+    arena({600.f, 450.f}, 300.f),
+    initialArenaRadius(300.f){
     // Human player at bottom-left with selected color
     auto humanCtrl = std::make_unique<HumanController>();
     players.emplace_back(sf::Vector2f(400.f, 550.f), std::move(humanCtrl), Settings::getPlayerColor());
@@ -35,6 +36,17 @@ void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) 
     try{
         frameCount++;
         
+        // Handle countdown before game starts
+        if(countdownActive) {
+            countdownTime -= dt.asSeconds();
+            if(countdownTime <= 0.f) {
+                countdownActive = false;
+                countdownTime = 0.f;
+            }
+            // During countdown, don't update game logic
+            return;
+        }
+        
         // Increment game time only if game is not over
         if(!gameOver) {
             gameTime += dt.asSeconds();
@@ -56,7 +68,8 @@ void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) 
         }
 
         for(auto& p : players){
-            p.update(dt.asSeconds(), positions, arena.center, arena.radius);
+            float speedMult = getSpeedMultiplier();
+            p.update(dt.asSeconds(), positions, arena.center, arena.radius, speedMult);
         }
         
         resolvePlayerCollisions();
@@ -116,6 +129,16 @@ void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) 
     }
 }
 
+float GameScreen::getSpeedMultiplier() const {
+    // Speed multiplier increases as arena shrinks
+    // At full size: 1.0x, at half size: 1.5x, at 1/4 size: 2.0x
+    float currentRadius = arena.radius;
+    if(initialArenaRadius <= 0.f) return 1.0f;
+    float shrinkRatio = currentRadius / initialArenaRadius;
+    // Linear scaling: 1.0 + (1 - shrinkRatio)
+    return 1.0f + (1.0f - shrinkRatio);
+}
+
 void GameScreen::render(sf::RenderWindow& window) {
     try {
         arena.render(window);
@@ -139,6 +162,59 @@ void GameScreen::render(sf::RenderWindow& window) {
                                      particle.position.y - particle.radius);
             
             window.draw(particleShape);
+        }
+        
+        // Countdown overlay before game starts
+        if(countdownActive) {
+            // Draw greyed out overlay
+            sf::RectangleShape overlay({1200.f, 900.f});
+            overlay.setFillColor(sf::Color(0, 0, 0, 150));
+            window.draw(overlay);
+            
+            // Load font for countdown numbers
+            static sf::Font font;
+            static bool fontLoaded = false;
+            if(!fontLoaded) {
+                if(font.loadFromFile("assets/arial.ttf")) {
+                    fontLoaded = true;
+                }
+            }
+            
+            if(fontLoaded) {
+                // Determine countdown number (3, 2, 1)
+                int countdownNumber = static_cast<int>(std::ceil(countdownTime));
+                if(countdownNumber > 0 && countdownNumber <= 3) {
+                    sf::Text countdownText;
+                    countdownText.setFont(font);
+                    countdownText.setString(std::to_string(countdownNumber));
+                    countdownText.setCharacterSize(200);
+                    
+                    // Use player's color
+                    sf::Color playerColor = Settings::getPlayerColor();
+                    
+                    // Calculate fade effect (fade in and out within each second)
+                    float timeInSecond = countdownTime - std::floor(countdownTime);
+                    float fadeAlpha = 1.0f;
+                    
+                    // Fade in during first 0.2s, fade out during last 0.3s
+                    if(timeInSecond > 0.7f) {
+                        fadeAlpha = (1.0f - timeInSecond) / 0.3f;  // Fade out
+                    } else if(timeInSecond < 0.2f) {
+                        fadeAlpha = timeInSecond / 0.2f;  // Fade in
+                    }
+                    
+                    playerColor.a = static_cast<sf::Uint8>(255 * fadeAlpha);
+                    countdownText.setFillColor(playerColor);
+                    
+                    // Center the text
+                    sf::FloatRect textBounds = countdownText.getLocalBounds();
+                    countdownText.setOrigin(textBounds.left + textBounds.width / 2.0f,
+                                           textBounds.top + textBounds.height / 2.0f);
+                    countdownText.setPosition(600.f, 400.f);
+                    
+                    window.draw(countdownText);
+                }
+            }
         }
         
         // If game is over, show overlay message
@@ -233,7 +309,7 @@ void GameScreen::updateParticles(float dt) {
 }
 
 void GameScreen::resolvePlayerCollisions() {
-    const float RESTITUTION = 1.3f;  // Elasticity coefficient (1.3 = dramatic bouncing with energy amplification)
+    const float RESTITUTION = 1.8f;  // Elasticity coefficient - even more dramatic bounces!
     
     for(size_t i = 0; i < players.size(); i++) {
         for(size_t j = i + 1; j < players.size(); j++) {
@@ -253,13 +329,13 @@ void GameScreen::resolvePlayerCollisions() {
             if(distance < minDistance && distance > 0.001f) {
                 // Collision detected
                 float overlap = minDistance - distance;
-                float pushDistance = overlap / 2.0f + 0.5f;
+                float pushDistance = overlap / 2.0f + 1.5f;  // Increased separation force
                 
                 // Normalized collision normal
                 float nx = dx / distance;
                 float ny = dy / distance;
                 
-                // Separate overlapping balls
+                // Separate overlapping balls with more force
                 players[i].move(sf::Vector2f(-nx * pushDistance, -ny * pushDistance));
                 players[j].move(sf::Vector2f(nx * pushDistance, ny * pushDistance));
                 

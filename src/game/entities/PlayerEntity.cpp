@@ -13,7 +13,8 @@ void PlayerEntity::update(
     float dt,
     const std::vector<sf::Vector2f>& otherPlayers,
     const sf::Vector2f& arenaCenter,
-    float arenaRadius
+    float arenaRadius,
+    float speedMultiplier
 ) {
     sf::Vector2f dir = controller->getMovementDirection(
         dt,
@@ -24,7 +25,7 @@ void PlayerEntity::update(
     );
 
     player.setMovementDirection(dir);
-    player.update(dt);
+    player.update(dt, speedMultiplier);
 }
 
 void PlayerEntity::render(sf::RenderWindow& window) {
@@ -53,6 +54,10 @@ void PlayerEntity::move(sf::Vector2f offset) {
 
 void PlayerEntity::addVelocity(sf::Vector2f impulse) {
     player.addVelocity(impulse);
+}
+
+void PlayerEntity::setMassMultiplier(float multiplier) {
+    player.setMassMultiplier(multiplier);
 }
 
 bool PlayerEntity::isAlive() const {
