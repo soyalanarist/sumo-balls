@@ -2,7 +2,7 @@
 #include <cmath>
 
 Arena::Arena(sf::Vector2f c, float r)
-    : center(c), radius(r), shape(r, 100)  // 100 points for smooth circle
+    : center(c), radius(r), shape(r, 1000)  // 360 points for very smooth circle
 {
     shape.setOrigin(radius, radius); // origin at center
     shape.setPosition(center);
@@ -23,6 +23,13 @@ sf::Vector2f Arena::getCenter() const {
 
 float Arena::getRadius() const {
     return radius;
+}
+
+void Arena::setRadius(float newRadius) {
+    radius = newRadius;
+    shape.setRadius(newRadius);
+    shape.setOrigin(newRadius, newRadius); // origin at center
+    shape.setPosition(center);
 }
 
 void Arena::render(sf::RenderWindow& window) const {
