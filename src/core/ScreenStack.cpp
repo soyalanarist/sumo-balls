@@ -69,15 +69,28 @@ void ScreenStack::update(sf::Time deltaTime) {
             case MenuAction::PAUSE:
                 push(std::make_unique<PauseMenu>(font));
                 break;
-            case MenuAction::SET_WINDOWED:
-                window.create(sf::VideoMode(1200, 900), "Sumo Balls");
+            case MenuAction::SET_WINDOWED: {
+                // Preserve anti-aliasing by requesting MSAA when recreating the window
+                sf::ContextSettings settings;
+                settings.antialiasingLevel = 16; // request high AA; driver may negotiate down
+                window.create(sf::VideoMode(1200, 900), "Sumo Balls", sf::Style::Default, settings);
                 window.setPosition(sf::Vector2i(0, 0));  // Position on primary monitor
                 Settings::setFullscreen(false);
+                // Optional: print actual AA level
+                auto s = window.getSettings();
+                std::cout << "AA level (windowed): " << s.antialiasingLevel << "\n";
                 break;
-            case MenuAction::SET_FULLSCREEN:
-                window.create(sf::VideoMode::getDesktopMode(), "Sumo Balls", sf::Style::Fullscreen);
+            }
+            case MenuAction::SET_FULLSCREEN: {
+                sf::ContextSettings settings;
+                settings.antialiasingLevel = 16; // request high AA; driver may negotiate down
+                window.create(sf::VideoMode::getDesktopMode(), "Sumo Balls", sf::Style::Fullscreen, settings);
                 Settings::setFullscreen(true);
+                // Optional: print actual AA level
+                auto s = window.getSettings();
+                std::cout << "AA level (fullscreen): " << s.antialiasingLevel << "\n";
                 break;
+            }
             case MenuAction::TOGGLE_FULLSCREEN:
             case MenuAction::NONE:
             default:

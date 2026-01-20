@@ -11,9 +11,9 @@ Game::Game() : screens(window, font){
     // Load settings from config file
     Settings::loadSettings();
     
-    // Enable anti-aliasing for smooth circles
+    // Enable anti-aliasing for smooth circles (request higher level)
     sf::ContextSettings settings;
-    settings.antialiasingLevel = 8;  // 8x anti-aliasing
+    settings.antialiasingLevel = 16;  // Request 16x; driver may negotiate down
     
     // Create window based on fullscreen setting
     if (Settings::fullscreen) {
