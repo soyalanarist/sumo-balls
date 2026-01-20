@@ -18,4 +18,12 @@ private:
     float difficulty;
     float decisionTimer = 0.f;
     sf::Vector2f cachedDirection{0.f, 0.f};
+    float aggressiveness;  // Personality trait: how aggressive this AI is
+    float caution;         // Personality trait: how cautious near edges
+    
+    // Helper methods
+    float calculateAdvantage(float selfDist, float opponentDist) const;
+    int selectTarget(const sf::Vector2f& selfPosition, 
+                     const std::vector<sf::Vector2f>& opponents,
+                     const sf::Vector2f& arenaCenter) const;
 };
