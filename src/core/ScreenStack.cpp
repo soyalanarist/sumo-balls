@@ -1,4 +1,5 @@
 #include "ScreenStack.h"
+#include "Settings.h"
 #include "../screens/menus/MainMenu.h"
 #include "../screens/menus/OptionsMenu.h"
 #include "../screens/menus/PauseMenu.h"
@@ -68,6 +69,16 @@ void ScreenStack::update(sf::Time deltaTime) {
             case MenuAction::PAUSE:
                 push(std::make_unique<PauseMenu>(font));
                 break;
+            case MenuAction::SET_WINDOWED:
+                window.create(sf::VideoMode(1200, 900), "Sumo Balls");
+                window.setPosition(sf::Vector2i(0, 0));  // Position on primary monitor
+                Settings::setFullscreen(false);
+                break;
+            case MenuAction::SET_FULLSCREEN:
+                window.create(sf::VideoMode::getDesktopMode(), "Sumo Balls", sf::Style::Fullscreen);
+                Settings::setFullscreen(true);
+                break;
+            case MenuAction::TOGGLE_FULLSCREEN:
             case MenuAction::NONE:
             default:
                 break;

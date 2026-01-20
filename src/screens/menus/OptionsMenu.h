@@ -19,4 +19,8 @@ private:
     sf::Text titleText;
     sf::Text statusText;  // Shows current lefty mode status
     sf::Text labelText;   // Label for the toggle switch
+    sf::Text displayModeLabel;  // Label for display mode buttons
+    sf::Text colorLabel;  // Label for color selection
+    sf::Text colorPreview;  // Shows current color name
+    int colorButtonsStartIndex;  // Index where color buttons start in buttons vector
 };

@@ -7,5 +7,8 @@ enum class MenuAction {
     QUIT,
     PAUSE,
     OPTIONS,
-    RESUME
+    RESUME,
+    TOGGLE_FULLSCREEN,
+    SET_WINDOWED,
+    SET_FULLSCREEN
 };
