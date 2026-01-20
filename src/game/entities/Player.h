@@ -4,7 +4,7 @@
 
 class Player {
 public:
-    Player(sf::Vector2f startPosition);
+    Player(sf::Vector2f startPosition, sf::Color color = sf::Color::White);
 
     void update(float dt);
     void render(sf::RenderWindow& window);
@@ -19,6 +19,7 @@ public:
     sf::Vector2f getVelocity() const;
     void setPosition(sf::Vector2f newPos);
     float getRadius() const;
+    float getMass() const;  // Mass based on radius (volume)
     
     bool isAlive() const;
     void setAlive(bool state);
@@ -29,7 +30,7 @@ private:
     sf::Vector2f movementDirection;
 
     float speed;
-    float maxSpeed = 550.f;   // Max velocity reachable through acceleration
+    float maxSpeed = 500.f;   // Max velocity reachable through acceleration
     float acceleration;
     float friction;
     float radius;

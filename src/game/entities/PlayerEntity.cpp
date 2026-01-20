@@ -3,9 +3,10 @@
 
 PlayerEntity::PlayerEntity(
     sf::Vector2f startPos,
-    std::unique_ptr<Controller> ctrl
+    std::unique_ptr<Controller> ctrl,
+    sf::Color color
 )
-: player(startPos),
+: player(startPos, color),
   controller(std::move(ctrl)) {}
 
 void PlayerEntity::update(
@@ -36,6 +37,10 @@ sf::Vector2f PlayerEntity::getPosition() const {
 
 float PlayerEntity::getRadius() const {
     return player.getRadius();
+}
+
+float PlayerEntity::getMass() const {
+    return player.getMass();
 }
 
 sf::Vector2f PlayerEntity::getVelocity() const {

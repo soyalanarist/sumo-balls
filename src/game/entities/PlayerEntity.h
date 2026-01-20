@@ -8,7 +8,8 @@ class PlayerEntity {
 public:
     PlayerEntity(
         sf::Vector2f startPos,
-        std::unique_ptr<Controller> controller
+        std::unique_ptr<Controller> controller,
+        sf::Color color = sf::Color::White
     );
     
     // Move semantics
@@ -30,6 +31,7 @@ public:
 
     sf::Vector2f getPosition() const;
     float getRadius() const;
+    float getMass() const;
     sf::Vector2f getVelocity() const;
     void move(sf::Vector2f offset);
     void addVelocity(sf::Vector2f impulse);

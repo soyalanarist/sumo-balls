@@ -1,19 +1,21 @@
 #include "Player.h"
 
-Player::Player(sf::Vector2f startPosition):
+Player::Player(sf::Vector2f startPosition, sf::Color color):
     position(startPosition),
     velocity(sf::Vector2f(0.f, 0.f)),
     movementDirection(sf::Vector2f(0.f, 0.f)),
     speed(100.f),           // Base acceleration speed
-    acceleration(30.f),    // Acceleration multiplier
+    acceleration(25.f),    // Acceleration multiplier
     friction(0.002f),        // Very low friction (~.2% decay per frame) for strong momentum
-    radius(15.f)
+    radius(18.f)
 {
-    // initialize shape with 60 points for smooth circle
-    shape.setPointCount(60);
+    // initialize shape with 180 points for very smooth circle
+    shape.setPointCount(180);
     shape.setRadius(radius);
     shape.setOrigin(radius, radius);
-    shape.setFillColor(sf::Color::White);
+    shape.setFillColor(color);
+    shape.setOutlineColor(sf::Color(200, 200, 200));  // Light grey border
+    shape.setOutlineThickness(2.f);
     shape.setPosition(position);
 }
 
@@ -83,6 +85,13 @@ void Player::setPosition(sf::Vector2f newPos){
 
 float Player::getRadius() const {
     return radius;
+}
+
+float Player::getMass() const {
+    // Mass proportional to volume (4/3 * pi * r^3)
+    // Simplified: mass = k * r^3, where k is a constant
+    const float DENSITY = 1.0f;  // Arbitrary unit density
+    return DENSITY * radius * radius * radius;
 }
 
 void Player::render(sf::RenderWindow& window)
