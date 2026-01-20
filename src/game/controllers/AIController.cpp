@@ -25,6 +25,17 @@ AIController::AIController(float diff) : difficulty(diff) {
     // Caution: 0.3-1.0, higher difficulty = more cautious
     caution = 0.3f + (difficulty * 0.7f) + variation(rng);
     caution = std::max(0.2f, std::min(1.0f, caution));
+
+    // Pick a persistent tangential patrol direction to avoid flip-flopping
+    std::uniform_int_distribution<int> signDist(0, 1);
+    patrolSign = signDist(rng) ? 1 : -1;
+    lastDirection = {0.f, 0.f};
+    // Initialize wander angle
+    std::uniform_real_distribution<float> angleDist(0.0f, 6.2831853f);
+    wanderAngle = angleDist(rng);
+    // Initialize burst schedule with a random initial delay
+    std::uniform_real_distribution<float> burstDelayDist(6.0f, 14.0f);
+    nextBurstDelay = burstDelayDist(rng);
 }
 
 float AIController::calculateAdvantage(float selfDist, float opponentDist) const {
@@ -82,95 +93,157 @@ sf::Vector2f AIController::getMovementDirection(
     const sf::Vector2f& arenaCenter,
     float arenaRadius
 ) {
-    // Calculate distances for boundary checking
     sf::Vector2f toCenter = arenaCenter - selfPosition;
     float distToCenter = magnitude(toCenter);
-    
-    // CRITICAL: Boundary safety check EVERY FRAME (highest priority)
-    float dangerZone = arenaRadius - (80.f + caution * 50.f);  // Cautious AIs have bigger safety margin
-    
+
+    float dangerZone = arenaRadius - (30.f + caution * 20.f);
+    edgeCooldown = std::max(0.f, edgeCooldown - dt);
     if (distToCenter > dangerZone) {
-        // Emergency return to center - override everything
-        return normalize(toCenter);
+        static std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<float> panicError(-0.08f, 0.08f);
+        sf::Vector2f panicDirection = normalize(toCenter);
+        panicDirection.x += panicError(rng);
+        panicDirection.y += panicError(rng);
+        lastDirection = normalize(panicDirection);
+        cachedDirection = lastDirection;
+        return cachedDirection;
     }
-    
-    // Update decision timer (reaction time based on difficulty)
+
+    // Update burst scheduling
+    if (burstActive) {
+        burstTimer -= dt;
+        if (burstTimer <= 0.f) {
+            burstActive = false;
+        }
+    } else {
+        nextBurstDelay -= dt;
+        if (nextBurstDelay <= 0.f) {
+            burstActive = true;
+            burstTimer = 5.0f;
+            static std::mt19937 rng(std::random_device{}());
+            std::uniform_real_distribution<float> burstDelayDist(6.0f, 14.0f);
+            nextBurstDelay = burstDelayDist(rng);
+        }
+    }
+
     decisionTimer -= dt;
-    float reactionTime = 0.5f - (difficulty * 0.3f);  // 0.5s (easy) to 0.2s (hard)
-    
+    float reactionTimeBase = 1.0f - (difficulty * 0.3f);
+    float reactionTime = std::max(0.5f, reactionTimeBase - (burstActive ? 0.2f : 0.0f));
     if (decisionTimer <= 0.f) {
         decisionTimer = reactionTime;
-        
+        static std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+        std::uniform_real_distribution<float> mistakeChance(0.0f, 1.0f);
         sf::Vector2f targetDirection{0.f, 0.f};
-        
+        float errorRate = (1.f - difficulty) * 0.6f;
+        bool makeMistake = mistakeChance(rng) < errorRate;
+
         if (!otherPlayers.empty()) {
-            // Select best target using priority system
             int targetIdx = selectTarget(selfPosition, otherPlayers, arenaCenter);
+            if (makeMistake && otherPlayers.size() > 1) {
+                std::uniform_int_distribution<int> wrongTarget(0, static_cast<int>(otherPlayers.size()) - 1);
+                targetIdx = wrongTarget(rng);
+            }
+
             sf::Vector2f target = otherPlayers[targetIdx];
             sf::Vector2f toTarget = target - selfPosition;
             float distToTarget = magnitude(toTarget);
-            
-            // Calculate positional advantage
             sf::Vector2f targetToCenter = arenaCenter - target;
             float targetDistFromCenter = magnitude(targetToCenter);
             float advantage = calculateAdvantage(distToCenter, targetDistFromCenter);
-            
-            // Behavior based on advantage and personality
+
+            float effAgg = std::min(1.0f, aggressiveness + (burstActive ? 0.25f : 0.0f));
+            float effCaution = std::max(0.1f, caution - (burstActive ? 0.15f : 0.0f));
             if (advantage > 30.f) {
-                // CHARGE MODE: We have significant positional advantage
                 targetDirection = normalize(toTarget);
-                
-                // Add slight leading for moving targets (better at higher difficulty)
-                if (difficulty > 0.5f) {
+                if (difficulty > 0.5f && !makeMistake) {
                     sf::Vector2f perpendicular(-toTarget.y, toTarget.x);
                     targetDirection = normalize(targetDirection + perpendicular * 0.1f * difficulty);
                 }
-                
             } else if (advantage > -30.f) {
-                // PRESSURE MODE: Fairly even position
-                if (distToTarget < 150.f) {
-                    // Close range - be aggressive based on personality
-                    if (aggressiveness > 0.6f) {
-                        targetDirection = normalize(toTarget);  // Charge
+                if (distToTarget < 170.f || burstActive) {
+                    if (effAgg > 0.5f) {
+                        targetDirection = normalize(toTarget);
                     } else {
-                        // Mix approach with center positioning
-                        targetDirection = normalize(toTarget * 0.7f + toCenter * 0.3f);
+                        targetDirection = normalize(toTarget * 0.88f + toCenter * 0.12f);
                     }
                 } else {
-                    // Medium range - close distance while maintaining center
-                    targetDirection = normalize(toTarget * 0.8f + toCenter * 0.2f);
+                    targetDirection = normalize(toTarget * 0.95f + toCenter * 0.05f);
                 }
-                
             } else {
-                // REPOSITION MODE: We're at disadvantage, get to center first
-                targetDirection = normalize(toCenter);
-                
-                // If target is close and we're cautious, add evasive movement
-                if (distToTarget < 100.f && caution > 0.6f) {
+                targetDirection = normalize(toCenter * 0.25f + toTarget * 0.75f);
+                if (distToTarget < 100.f && effCaution > 0.6f) {
                     sf::Vector2f perpendicular(-toTarget.y, toTarget.x);
-                    targetDirection = normalize(targetDirection + perpendicular * 0.3f);
+                    targetDirection = normalize(targetDirection + perpendicular * 0.25f);
                 }
             }
-            
+
+            sf::Vector2f outward = normalize(selfPosition - arenaCenter);
+            float preferredRing = arenaRadius * 0.82f;
+            float ringMargin = 40.f + (1.f - difficulty) * 50.f;
+            if (distToCenter < preferredRing - ringMargin) {
+                float outwardBias = (burstActive ? 0.12f : 0.2f) + (1.f - difficulty) * 0.08f;
+                targetDirection = normalize(targetDirection + outward * outwardBias);
+            } else if (distToCenter > preferredRing + ringMargin) {
+                float inwardBias = (burstActive ? 0.02f : 0.05f);
+                targetDirection = normalize(targetDirection + normalize(toCenter) * inwardBias);
+            }
+            if (mistakeChance(rng) < 0.005f) patrolSign *= -1;
         } else {
-            // No opponents - move toward center and stay alert
-            if (distToCenter > 50.f) {
+            sf::Vector2f outward = normalize(selfPosition - arenaCenter);
+            float preferredRing = arenaRadius * 0.82f;
+            float ringMargin = 40.f + (1.f - difficulty) * 50.f;
+            if (distToCenter < preferredRing - ringMargin) {
+                targetDirection = normalize(outward * (burstActive ? 0.6f : 0.7f) + toCenter * (burstActive ? 0.4f : 0.3f));
+            } else if (distToCenter > preferredRing + ringMargin) {
                 targetDirection = normalize(toCenter);
             } else {
-                targetDirection = {0.f, 0.f};  // At center, stay still
+                sf::Vector2f tangent(-outward.y, outward.x);
+                float tangentGain = (0.55f + (1.f - difficulty) * 0.15f) + (burstActive ? 0.1f : 0.0f);
+                targetDirection = normalize(tangent * tangentGain * static_cast<float>(patrolSign));
             }
         }
-        
-        // Add personality-based randomness (less randomness at higher difficulty)
-        static std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-        
-        float jitterAmount = (1.f - difficulty) * 0.08f;
+
+        // Add curved wander to avoid straight-line traversals
+        {
+            // Update wander angle with low-frequency noise
+            float angleDelta = dist(rng) * wanderJitter * dt;
+            wanderAngle += angleDelta;
+            sf::Vector2f wanderVec(std::cos(wanderAngle), std::sin(wanderAngle));
+            // Perpendicular component to desired direction for gentle arcs
+            sf::Vector2f perp(-targetDirection.y, targetDirection.x);
+            float edgeFactorW = std::min(1.f, std::max(0.f, (arenaRadius - distToCenter) / (arenaRadius * 0.25f)));
+            float wanderScale = wanderStrength * (burstActive ? 0.5f : 1.0f) * (1.f - 0.7f * edgeFactorW);
+            float curvaGain = (burstActive ? 0.08f : 0.12f) * (1.f - 0.6f * edgeFactorW);
+            targetDirection = normalize(targetDirection + perp * curvaGain + wanderVec * wanderScale);
+        }
+
+        float edgeFactor = std::min(1.f, std::max(0.f, (arenaRadius - distToCenter) / (arenaRadius * 0.25f)));
+        float jitterBase = (1.f - difficulty) * (burstActive ? 0.6f : 0.7f);
+        float jitterAmount = jitterBase * (1.f - edgeFactor);
         targetDirection.x += dist(rng) * jitterAmount;
         targetDirection.y += dist(rng) * jitterAmount;
-        
-        cachedDirection = normalize(targetDirection);
+
+        if (edgeCooldown <= 0.f && mistakeChance(rng) < (0.35f * (1.f - difficulty)) * (1.f - edgeFactor)) {
+            float overCorrect = 1.6f + dist(rng) * 1.0f;
+            targetDirection.x *= overCorrect;
+            targetDirection.y *= overCorrect;
+        }
+        if (edgeCooldown <= 0.f && mistakeChance(rng) < (0.3f * (1.f - difficulty)) * (1.f - edgeFactor)) {
+            float underCorrect = 0.3f + dist(rng) * 0.3f;
+            targetDirection.x *= underCorrect;
+            targetDirection.y *= underCorrect;
+        }
+        if (edgeCooldown <= 0.f && mistakeChance(rng) < (0.2f * (1.f - difficulty)) * (1.f - edgeFactor)) {
+            targetDirection = {0.f, 0.f};
+        }
+
+        float smoothFactor = (edgeCooldown > 0.f) ? 0.97f : (burstActive ? 0.85f : 0.9f);
+        sf::Vector2f blended = cachedDirection * smoothFactor + targetDirection * (1.f - smoothFactor);
+        if (blended.x == 0.f && blended.y == 0.f) blended = cachedDirection;
+        cachedDirection = normalize(blended);
+        lastDirection = cachedDirection;
     }
-    
+
     return cachedDirection;
 }
