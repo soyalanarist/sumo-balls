@@ -2,22 +2,43 @@
 #include "menus/GameOverMenu.h"
 #include "../game/controllers/HumanController.h"
 #include "../game/controllers/AIController.h"
+#include "../core/Settings.h"
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <cmath>
 
 GameScreen::GameScreen():
     arena({600.f, 450.f}, 300.f){
+    // Human player at bottom-left with selected color
     auto humanCtrl = std::make_unique<HumanController>();
-    players.emplace_back(sf::Vector2f(400.f, 450.f), std::move(humanCtrl));
-    // In GameScreen constructor:
-    auto aiCtrl = std::make_unique<AIController>(0.7f);  // 70% difficulty
-    players.emplace_back(sf::Vector2f(800.f, 450.f), std::move(aiCtrl));
+    players.emplace_back(sf::Vector2f(400.f, 550.f), std::move(humanCtrl), Settings::getPlayerColor());
+    
+    // 5 AI players positioned around the arena with varied difficulties
+    // Positions arranged in a circle around arena center
+    auto ai1 = std::make_unique<AIController>(0.5f);  // 50% difficulty
+    players.emplace_back(sf::Vector2f(800.f, 550.f), std::move(ai1));
+    
+    auto ai2 = std::make_unique<AIController>(0.6f);  // 60% difficulty
+    players.emplace_back(sf::Vector2f(750.f, 350.f), std::move(ai2));
+    
+    auto ai3 = std::make_unique<AIController>(0.7f);  // 70% difficulty
+    players.emplace_back(sf::Vector2f(600.f, 250.f), std::move(ai3));
+    
+    auto ai4 = std::make_unique<AIController>(0.65f);  // 65% difficulty
+    players.emplace_back(sf::Vector2f(450.f, 350.f), std::move(ai4));
+    
+    auto ai5 = std::make_unique<AIController>(0.55f);  // 55% difficulty
+    players.emplace_back(sf::Vector2f(600.f, 500.f), std::move(ai5));
 }
 
-void GameScreen::update(sf::Time dt, sf::RenderWindow& window) {
-    try {
+void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) {
+    try{
         frameCount++;
+        
+        // Increment game time only if game is not over
+        if(!gameOver) {
+            gameTime += dt.asSeconds();
+        }
         
         // Check for pause key (P)
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::P)) {
@@ -40,8 +61,17 @@ void GameScreen::update(sf::Time dt, sf::RenderWindow& window) {
         
         resolvePlayerCollisions();
         
+        // Shrink arena over time (continuous shrinking until game ends)
+        if(!gameOver) {
+            float shrinkRate = 5.0f;  // pixels per second
+            float newRadius = 300.f - (gameTime * shrinkRate);
+            if(newRadius > 0.f) {
+                arena.setRadius(newRadius);
+            }
+        }
+        
         // Check arena boundaries - mark players as dead if 50% outside arena
-        for(auto& p : players) {
+        for(auto& p : players){
             if(p.isAlive()) {
                 sf::Vector2f playerPos = p.getPosition();
                 float playerRadius = p.getRadius();
@@ -203,8 +233,7 @@ void GameScreen::updateParticles(float dt) {
 }
 
 void GameScreen::resolvePlayerCollisions() {
-    const float COLLISION_ELASTICITY = 1.5f;  // Energy amplification for bouncy collisions
-    const float KNOCKBACK_MULTIPLIER = 1.2f;  // Additional boost for impact feel
+    const float RESTITUTION = 1.3f;  // Elasticity coefficient (1.3 = dramatic bouncing with energy amplification)
     
     for(size_t i = 0; i < players.size(); i++) {
         for(size_t j = i + 1; j < players.size(); j++) {
@@ -222,39 +251,62 @@ void GameScreen::resolvePlayerCollisions() {
             float minDistance = radius1 + radius2;
             
             if(distance < minDistance && distance > 0.001f) {
-                // Collision detected - push players apart
+                // Collision detected
                 float overlap = minDistance - distance;
-                float pushDistance = overlap / 2.0f + 0.5f;  // Increased separation force
+                float pushDistance = overlap / 2.0f + 0.5f;
                 
-                // Normalized direction
+                // Normalized collision normal
                 float nx = dx / distance;
                 float ny = dy / distance;
                 
-                // Push players apart with stronger force
+                // Separate overlapping balls
                 players[i].move(sf::Vector2f(-nx * pushDistance, -ny * pushDistance));
                 players[j].move(sf::Vector2f(nx * pushDistance, ny * pushDistance));
                 
-                // Calculate relative velocity for more realistic collision response
+                // Get masses and velocities
+                float mass1 = players[i].getMass();
+                float mass2 = players[j].getMass();
                 sf::Vector2f vel1 = players[i].getVelocity();
                 sf::Vector2f vel2 = players[j].getVelocity();
                 
+                // Calculate velocities along collision normal
                 float vel1Normal = vel1.x * nx + vel1.y * ny;
                 float vel2Normal = vel2.x * nx + vel2.y * ny;
                 
-                // Apply bounceback only if moving toward each other
-                if(vel1Normal > vel2Normal) {
-                    // Calculate restitution - how much velocity is transferred
-                    float relativeVelocity = vel1Normal - vel2Normal;
-                    float restitution = COLLISION_ELASTICITY * relativeVelocity * KNOCKBACK_MULTIPLIER;
-                    
-                    // Apply impulses (stronger for more noticeable bounceback)
-                    sf::Vector2f impulse1(-restitution * nx, -restitution * ny);
-                    sf::Vector2f impulse2(restitution * nx, restitution * ny);
-                    
-                    players[i].addVelocity(impulse1);
-                    players[j].addVelocity(impulse2);
-                }
+                // Calculate velocities perpendicular to collision normal (unchanged)
+                float vel1Tangent = vel1.x * (-ny) + vel1.y * nx;
+                float vel2Tangent = vel2.x * (-ny) + vel2.y * nx;
+                
+                // Only resolve if objects are moving toward each other
+                if(vel1Normal - vel2Normal <= 0) return;
+                
+                // Conservation of momentum + restitution
+                // Formula: v'n = ((m1*v1n + m2*v2n) ± restitution*m2*(v2n-v1n)) / (m1 + m2)
+                float totalMass = mass1 + mass2;
+                
+                float newVel1Normal = ((mass1 * vel1Normal + mass2 * vel2Normal) + 
+                                      mass2 * RESTITUTION * (vel2Normal - vel1Normal)) / totalMass;
+                float newVel2Normal = ((mass1 * vel1Normal + mass2 * vel2Normal) + 
+                                      mass1 * RESTITUTION * (vel1Normal - vel2Normal)) / totalMass;
+                
+                // Reconstruct velocities from normal and tangent components
+                sf::Vector2f newVel1(
+                    newVel1Normal * nx + vel1Tangent * (-ny),
+                    newVel1Normal * ny + vel1Tangent * nx
+                );
+                sf::Vector2f newVel2(
+                    newVel2Normal * nx + vel2Tangent * (-ny),
+                    newVel2Normal * ny + vel2Tangent * nx
+                );
+                
+                // Apply new velocities (set absolute velocity, not impulse)
+                sf::Vector2f impulse1 = newVel1 - vel1;
+                sf::Vector2f impulse2 = newVel2 - vel2;
+                
+                players[i].addVelocity(impulse1);
+                players[j].addVelocity(impulse2);
             }
         }
     }
 }
+
