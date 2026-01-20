@@ -8,7 +8,7 @@ public:
     void update(sf::Time deltaTime, sf::RenderWindow& window) override;
     void render(sf::RenderWindow& window) override;
 
-    bool isOverlay() const override { return true; }
+    bool isOverlay() const override { return false; }
 private:
     std::vector<Button> buttons;
     sf::RectangleShape mask;
