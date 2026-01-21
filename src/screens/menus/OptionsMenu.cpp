@@ -55,6 +55,24 @@ OptionsMenu::OptionsMenu(sf::Font& f, bool isOverlay) : overlay(isOverlay) {
     colorPreview.setFont(f);
     colorPreview.setCharacterSize(18);
     colorPreview.setPosition(250.f, 400.f);
+
+    // Online label/status
+    onlineLabel.setFont(f);
+    onlineLabel.setString("Online Multiplayer:");
+    onlineLabel.setCharacterSize(20);
+    onlineLabel.setFillColor(sf::Color::White);
+    onlineLabel.setPosition(250.f, 470.f);
+
+    onlineStatus.setFont(f);
+    onlineStatus.setCharacterSize(16);
+    onlineStatus.setFillColor(sf::Color::Cyan);
+    onlineStatus.setPosition(250.f, 440.f);
+
+    onlineSwitch = std::make_unique<ToggleSwitch>(
+        sf::Vector2f(550.f, 470.f),
+        sf::Vector2f(100.f, 50.f),
+        Settings::onlineEnabled
+    );
     
     // Color selection buttons (Previous/Next)
     colorButtonsStartIndex = static_cast<int>(buttons.size());
@@ -72,6 +90,7 @@ OptionsMenu::OptionsMenu(sf::Font& f, bool isOverlay) : overlay(isOverlay) {
 void OptionsMenu::update(sf::Time /*deltaTime*/, sf::RenderWindow& window) {
     // Update status text
     statusText.setString(Settings::leftyMode ? "Lefty Mode: ON" : "Lefty Mode: OFF");
+    onlineStatus.setString(Settings::onlineEnabled ? "Online: ON" : "Online: OFF");
     
     // Update color preview
     colorPreview.setString(Settings::getColorName(Settings::playerColorIndex));
@@ -79,11 +98,16 @@ void OptionsMenu::update(sf::Time /*deltaTime*/, sf::RenderWindow& window) {
 
     // Update toggle switch
     leftyModeSwitch->update(window);
+    onlineSwitch->update(window);
     
     // Sync Settings with switch state
     if (leftyModeSwitch->isToggled() != Settings::leftyMode) {
         Settings::toggleLeftyMode();
         leftyModeSwitch->setToggled(Settings::leftyMode);
+    }
+
+    if (onlineSwitch->isToggled() != Settings::onlineEnabled) {
+        Settings::setOnlineEnabled(onlineSwitch->isToggled());
     }
 
     for (auto& button : buttons) {
@@ -139,8 +163,11 @@ void OptionsMenu::render(sf::RenderWindow& window) {
     window.draw(displayModeLabel);
     window.draw(colorLabel);
     window.draw(colorPreview);
+    window.draw(onlineLabel);
+    window.draw(onlineStatus);
     
     leftyModeSwitch->render(window);
+    onlineSwitch->render(window);
     
     for (auto& button : buttons) {
         button.render(window);

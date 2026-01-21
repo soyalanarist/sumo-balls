@@ -1,9 +1,16 @@
 #include "MainMenu.h"
+#include <cstdlib>
+#include <iostream>
 
 MainMenu::MainMenu(sf::Font& f){
     buttons.emplace_back(f, "Start Game", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 300.f));
     buttons.emplace_back(f, "Options", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 400.f));
     buttons.emplace_back(f, "Quit", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 500.f));
+    
+    // Auto-start game if running in online test mode
+    if (std::getenv("SUMO_ONLINE")) {
+        action = MenuAction::START_GAME;
+    }
 }
 
 void MainMenu::update(sf::Time /*deltaTime*/, sf::RenderWindow& window){

@@ -9,6 +9,8 @@
 #include <random>
 #include <algorithm>
 #include <iostream>
+#include <cstdlib>
+#include <chrono>
 
 GameScreen::GameScreen():
     arena({600.f, 450.f}, 300.f),
@@ -17,6 +19,14 @@ GameScreen::GameScreen():
     // Load font once at initialization
     if(!font.loadFromFile("assets/arial.ttf")) {
         throw std::runtime_error("Failed to load font: assets/arial.ttf");
+    }
+
+    initOnlineConfigFromEnv();
+
+    if(onlineMode) {
+        // Online: players will be created from server snapshots; no local AI spawn
+        countdownActive = false;  // Disable countdown in online mode
+        return;
     }
     
     // Calculate 6 equidistant spawn positions around arena center
@@ -58,11 +68,241 @@ GameScreen::GameScreen():
     players.emplace_back(spawnPositions[indices[5]], std::move(ai5));
 }
 
+void GameScreen::initOnlineConfigFromEnv() {
+    onlineMode = Settings::onlineEnabled;
+    netHost = Settings::onlineHost;
+    netPort = static_cast<std::uint16_t>(Settings::onlinePort);
+
+    if (const char* envOnline = std::getenv("SUMO_ONLINE")) {
+        std::string v(envOnline);
+        std::transform(v.begin(), v.end(), v.begin(), ::tolower);
+        onlineMode = (v == "1" || v == "true" || v == "yes");
+    }
+    if (const char* envHost = std::getenv("SUMO_HOST")) {
+        netHost = envHost;
+    }
+    if (const char* envPort = std::getenv("SUMO_PORT")) {
+        netPort = static_cast<std::uint16_t>(std::stoi(envPort));
+    }
+}
+
+sf::Color GameScreen::colorForId(std::uint32_t id) const {
+    // Deterministic palette based on id
+    static const sf::Color palette[] = {
+        sf::Color::White, sf::Color::Red, sf::Color::Green, sf::Color::Blue,
+        sf::Color::Yellow, sf::Color::Magenta, sf::Color::Cyan,
+        sf::Color(255, 128, 0), sf::Color(128, 0, 128), sf::Color(255, 192, 203)
+    };
+    return palette[id % (sizeof(palette) / sizeof(palette[0]))];
+}
+
+void GameScreen::handleNetService() {
+    netClient.service(
+        0,
+        [&]() { 
+            netConnected = true;
+            // Send JoinRequest upon connection
+            std::vector<std::uint8_t> joinMsg;
+            joinMsg.push_back(net::PROTOCOL_VERSION);
+            joinMsg.push_back(static_cast<std::uint8_t>(net::MessageType::JoinRequest));
+            netClient.send(joinMsg, true);
+        },
+        [&]() {
+            netConnected = false;
+            netJoined = false;
+            netPlayers.clear();
+            rttMs = -1.f;
+        },
+        [&](const ENetPacket* packet) {
+            net::MessageType type;
+            if (!net::parseHeader(packet->data, packet->dataLength, type)) return;
+            switch (type) {
+                case net::MessageType::JoinAccept: {
+                    if (packet->dataLength < 2 + sizeof(net::JoinAccept)) return;
+                    net::JoinAccept msg{};
+                    std::memcpy(&msg, packet->data + 2, sizeof(net::JoinAccept));
+                    netPlayerId = msg.playerId;
+                    netJoined = true;
+                    break;
+                }
+                case net::MessageType::State: {
+                    net::StateSnapshot snap;
+                    if (net::deserializeState(packet->data, packet->dataLength, snap)) {
+                        applySnapshot(snap);
+                    }
+                    break;
+                }
+                case net::MessageType::Pong: {
+                    if (packet->dataLength < 2 + sizeof(net::Ping)) return;
+                    net::Ping pong{};
+                    std::memcpy(&pong, packet->data + 2, sizeof(net::Ping));
+                    auto nowMs = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch()).count() & 0xFFFFFFFFu);
+                    std::uint32_t diff = nowMs - pong.timestampMs;
+                    rttMs = static_cast<float>(diff);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    );
+}
+
+void GameScreen::sendNetInput(float dt) {
+    if (!netJoined || netPlayerId == 0) return;
+    auto selfIt = netPlayers.find(netPlayerId);
+    if (selfIt == netPlayers.end()) return;
+
+    std::vector<sf::Vector2f> others;
+    others.reserve(netPlayers.size() > 0 ? netPlayers.size() - 1 : 0);
+    for (const auto& kv : netPlayers) {
+        if (kv.first == netPlayerId) continue;
+        others.push_back(kv.second.getPosition());
+    }
+
+    sf::Vector2f dir = netController.getMovementDirection(
+        dt,
+        selfIt->second.getPosition(),
+        others,
+        arena.center,
+        arena.radius
+    );
+
+    net::InputCommand cmd{};
+    cmd.playerId = netPlayerId;
+    cmd.dirX = dir.x;
+    cmd.dirY = dir.y;
+    cmd.sequence = inputSequence++;
+    cmd.timestampMs = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count() & 0xFFFFFFFFu);
+    netClient.send(net::serializeInput(cmd), false);
+
+    // Client-side prediction: advance local player with same input
+    selfIt->second.setMovementDirection(dir);
+    selfIt->second.update(dt, getSpeedMultiplier());
+}
+
+void GameScreen::sendNetPing(float dt) {
+    pingTimer += dt;
+    const float pingInterval = 1.0f;
+    if (pingTimer < pingInterval) return;
+    pingTimer = 0.f;
+    net::Ping p{};
+    p.timestampMs = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count() & 0xFFFFFFFFu);
+    lastPingStamp = p.timestampMs;
+    netClient.send(net::serializePing(net::MessageType::Ping, p), false);
+}
+
+void GameScreen::applySnapshot(const net::StateSnapshot& snap) {
+    arena.setRadius(snap.arenaRadius);
+    snapshotBuffer.push_back(snap);
+    while (snapshotBuffer.size() > 30) snapshotBuffer.pop_front();
+
+    for (const auto& ps : snap.players) {
+        auto it = netPlayers.find(ps.playerId);
+        if (it == netPlayers.end()) {
+            Player p({ps.x, ps.y}, colorForId(ps.playerId));
+            p.setAlive(ps.alive != 0);
+            netPlayers.emplace(ps.playerId, std::move(p));
+        } else {
+            sf::Vector2f authPos{ps.x, ps.y};
+            if (ps.playerId == netPlayerId) {
+                // Reconcile local prediction toward authoritative position
+                sf::Vector2f cur = it->second.getPosition();
+                sf::Vector2f corrected{
+                    cur.x + (authPos.x - cur.x) * selfCorrectionBlend,
+                    cur.y + (authPos.y - cur.y) * selfCorrectionBlend
+                };
+                it->second.setPosition(corrected);
+            } else {
+                it->second.setPosition(authPos);
+            }
+            it->second.setAlive(ps.alive != 0);
+        }
+        netTargetPositions[ps.playerId] = {ps.x, ps.y};
+    }
+}
+
+void GameScreen::interpolateSnapshots() {
+    if (snapshotBuffer.empty()) return;
+    const auto& latest = snapshotBuffer.back();
+    std::uint32_t renderTime = (latest.serverTimeMs > interpDelayMs) ? static_cast<std::uint32_t>(latest.serverTimeMs - interpDelayMs) : latest.serverTimeMs;
+
+    const net::StateSnapshot* prev = nullptr;
+    const net::StateSnapshot* next = nullptr;
+    for (const auto& s : snapshotBuffer) {
+        if (s.serverTimeMs <= renderTime) prev = &s;
+        if (s.serverTimeMs >= renderTime) { next = &s; break; }
+    }
+    if (!prev) prev = &snapshotBuffer.front();
+    if (!next) next = &snapshotBuffer.back();
+
+    float alpha = 0.f;
+    if (next != prev && next->serverTimeMs != prev->serverTimeMs) {
+        alpha = static_cast<float>(renderTime - prev->serverTimeMs) / static_cast<float>(next->serverTimeMs - prev->serverTimeMs);
+        if (alpha < 0.f) alpha = 0.f;
+        if (alpha > 1.f) alpha = 1.f;
+    }
+
+    arena.setRadius(next->arenaRadius);
+
+    auto applyLerp = [&](const net::StateSnapshot* A, const net::StateSnapshot* B, float t) {
+        // Index players by id for quick lookup
+        std::unordered_map<std::uint32_t, const net::PlayerState*> mapA;
+        mapA.reserve(A->players.size());
+        for (const auto& p : A->players) mapA[p.playerId] = &p;
+        for (const auto& pb : B->players) {
+            // Skip interpolation for self player - using client-side prediction instead
+            if (pb.playerId == netPlayerId) continue;
+            
+            const auto* pa = mapA.count(pb.playerId) ? mapA[pb.playerId] : nullptr;
+            sf::Vector2f posB{pb.x, pb.y};
+            sf::Vector2f posA = pa ? sf::Vector2f{pa->x, pa->y} : posB;
+            
+            // Smooth interpolation with slight extrapolation for more fluid movement
+            float smoothT = t * t * (3.f - 2.f * t);  // Smoothstep function
+            sf::Vector2f lerped{
+                posA.x + (posB.x - posA.x) * smoothT,
+                posA.y + (posB.y - posA.y) * smoothT
+            };
+            
+            auto it = netPlayers.find(pb.playerId);
+            if (it != netPlayers.end()) {
+                it->second.setPosition(lerped);
+                it->second.setAlive(pb.alive != 0);
+            }
+        }
+    };
+
+    applyLerp(prev, next, alpha);
+}
+
 void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) {
     try{
         frameCount++;
         
-        // Handle countdown before game starts
+        // Online client mode: process networking FIRST, before countdown logic
+        if(onlineMode) {
+            if(!netConnected) {
+                static bool connectionAttempted = false;
+                if (!connectionAttempted) {
+                    if(netClient.connect(netHost, netPort)) {
+                        connectionAttempted = true;
+                    }
+                }
+            }
+
+            handleNetService();
+            sendNetInput(dt.asSeconds());
+            sendNetPing(dt.asSeconds());
+
+            interpolateSnapshots();
+            return;
+        }
+        
+        // Handle countdown before game starts (offline mode only)
         if(countdownActive) {
             countdownTime -= dt.asSeconds();
             if(countdownTime <= 0.f) {
@@ -169,6 +409,25 @@ float GameScreen::getSpeedMultiplier() const {
 
 void GameScreen::render(sf::RenderWindow& window) {
     try {
+        if(onlineMode) {
+            arena.render(window);
+            for(auto& kv : netPlayers) {
+                if(kv.second.isAlive()) {
+                    kv.second.render(window);
+                }
+            }
+            // HUD: show RTT/status
+            sf::Text netInfo;
+            netInfo.setFont(font);
+            netInfo.setCharacterSize(18);
+            netInfo.setFillColor(sf::Color::White);
+            std::string rttStr = (rttMs >= 0.f) ? std::to_string(static_cast<int>(rttMs)) + " ms" : "--";
+            netInfo.setString("Online  RTT: " + rttStr);
+            netInfo.setPosition(10.f, 10.f);
+            window.draw(netInfo);
+            return;
+        }
+
         arena.render(window);
 
         for (auto& playerEntity : players) {
@@ -328,7 +587,7 @@ void GameScreen::updateParticles(float dt) {
 }
 
 void GameScreen::resolvePlayerCollisions() {
-    const float RESTITUTION = 1.8f;  // Elasticity coefficient - even more dramatic bounces!
+    const float RESTITUTION = 2.05f;  // Higher elasticity for stronger rebounds
     
     for(size_t i = 0; i < players.size(); i++) {
         for(size_t j = i + 1; j < players.size(); j++) {
@@ -351,7 +610,7 @@ void GameScreen::resolvePlayerCollisions() {
                 // Collision detected - now calculate actual distance for resolution
                 float distance = std::sqrt(distSq);
                 float overlap = minDistance - distance;
-                float pushDistance = overlap / 2.0f + 1.5f;  // Increased separation force
+                float pushDistance = overlap * 0.5f + 3.0f;  // Extra separation force
                 
                 // Normalized collision normal
                 float nx = dx / distance;
@@ -376,7 +635,7 @@ void GameScreen::resolvePlayerCollisions() {
                 float vel2Tangent = vel2.x * (-ny) + vel2.y * nx;
                 
                 // Only resolve if objects are moving toward each other
-                if(vel1Normal - vel2Normal <= 0) return;
+                if(vel1Normal - vel2Normal <= 0) continue;
                 
                 // Conservation of momentum + restitution
                 // Formula: v'n = ((m1*v1n + m2*v2n) ± restitution*m2*(v2n-v1n)) / (m1 + m2)
@@ -396,11 +655,12 @@ void GameScreen::resolvePlayerCollisions() {
                     newVel2Normal * nx + vel2Tangent * (-ny),
                     newVel2Normal * ny + vel2Tangent * nx
                 );
-                
-                // Apply new velocities (set absolute velocity, not impulse)
-                sf::Vector2f impulse1 = newVel1 - vel1;
-                sf::Vector2f impulse2 = newVel2 - vel2;
-                
+
+                // Apply boosted impulses for more dramatic knockback
+                const float impulseBoost = 1.15f;
+                sf::Vector2f impulse1 = (newVel1 - vel1) * impulseBoost;
+                sf::Vector2f impulse2 = (newVel2 - vel2) * impulseBoost;
+
                 players[i].addVelocity(impulse1);
                 players[j].addVelocity(impulse2);
             }

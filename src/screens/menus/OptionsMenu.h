@@ -23,4 +23,9 @@ private:
     sf::Text colorLabel;  // Label for color selection
     sf::Text colorPreview;  // Shows current color name
     int colorButtonsStartIndex;  // Index where color buttons start in buttons vector
+
+    // Online toggle
+    sf::Text onlineLabel;  // Label for online status
+    sf::Text onlineStatus;  // Shows current online status
+    std::unique_ptr<ToggleSwitch> onlineSwitch;  // Toggle switch for online status
 };

@@ -1,5 +1,8 @@
 {
-  "leftyMode": true,
+  "leftyMode": false,
   "fullscreen": false,
-  "playerColorIndex": 9
+  "playerColorIndex": 5,
+  "onlineEnabled": true,
+  "onlineHost": "127.0.0.1",
+  "onlinePort": 7777
 }

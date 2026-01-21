@@ -19,7 +19,20 @@ sf::Vector2f HumanController::getMovementDirection(
 ) {
     sf::Vector2f dir{0.f, 0.f};
 
-    if (Settings::leftyMode) {
+    // Check for arrow keys first (always available regardless of settings)
+    bool arrowKeysUsed = 
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Up) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Down) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Left) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Right);
+    
+    if (arrowKeysUsed) {
+        // Arrow keys layout
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) dir.y -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) dir.y += 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) dir.x -= 1.f;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) dir.x += 1.f;
+    } else if (Settings::leftyMode) {
         // IJKL layout for lefty mode
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::I)) dir.y -= 1.f;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::K)) dir.y += 1.f;

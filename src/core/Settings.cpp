@@ -6,6 +6,9 @@
 bool Settings::leftyMode = false;
 bool Settings::fullscreen = true;
 int Settings::playerColorIndex = 0;  // Default to white
+bool Settings::onlineEnabled = false;
+std::string Settings::onlineHost = "127.0.0.1";
+int Settings::onlinePort = 7777;
 const std::string Settings::CONFIG_FILE = "config.json";
 
 sf::Color Settings::getPlayerColor() {
@@ -101,6 +104,51 @@ void Settings::loadSettings() {
             }
         }
     }
+
+    // Look for "onlineEnabled": true/false
+    pos = content.find("\"onlineEnabled\"");
+    if (pos != std::string::npos) {
+        size_t colonPos = content.find(':', pos);
+        if (colonPos != std::string::npos) {
+            size_t truePos = content.find("true", colonPos);
+            size_t falsePos = content.find("false", colonPos);
+            if (truePos != std::string::npos && (falsePos == std::string::npos || truePos < falsePos)) {
+                onlineEnabled = true;
+            } else {
+                onlineEnabled = false;
+            }
+        }
+    }
+
+    // Look for "onlineHost": string
+    pos = content.find("\"onlineHost\"");
+    if (pos != std::string::npos) {
+        size_t colonPos = content.find(':', pos);
+        if (colonPos != std::string::npos) {
+            size_t quotePos = content.find('"', colonPos + 1);
+            if (quotePos != std::string::npos) {
+                size_t endQuote = content.find('"', quotePos + 1);
+                if (endQuote != std::string::npos) {
+                    onlineHost = content.substr(quotePos + 1, endQuote - quotePos - 1);
+                }
+            }
+        }
+    }
+
+    // Look for "onlinePort": number
+    pos = content.find("\"onlinePort\"");
+    if (pos != std::string::npos) {
+        size_t colonPos = content.find(':', pos);
+        if (colonPos != std::string::npos) {
+            size_t numStart = colonPos + 1;
+            while (numStart < content.size() && (content[numStart] == ' ' || content[numStart] == '\t' || content[numStart] == '\n')) {
+                numStart++;
+            }
+            if (numStart < content.size() && std::isdigit(content[numStart])) {
+                onlinePort = std::stoi(content.substr(numStart));
+            }
+        }
+    }
 }
 
 void Settings::saveSettings() {
@@ -112,9 +160,27 @@ void Settings::saveSettings() {
     file << "{\n";
     file << "  \"leftyMode\": " << (leftyMode ? "true" : "false") << ",\n";
     file << "  \"fullscreen\": " << (fullscreen ? "true" : "false") << ",\n";
-    file << "  \"playerColorIndex\": " << playerColorIndex << "\n";
+    file << "  \"playerColorIndex\": " << playerColorIndex << ",\n";
+    file << "  \"onlineEnabled\": " << (onlineEnabled ? "true" : "false") << ",\n";
+    file << "  \"onlineHost\": \"" << onlineHost << "\",\n";
+    file << "  \"onlinePort\": " << onlinePort << "\n";
     file << "}\n";
     
     file.close();
+}
+
+void Settings::setOnlineEnabled(bool enabled) {
+    onlineEnabled = enabled;
+    saveSettings();
+}
+
+void Settings::setOnlineHost(const std::string& host) {
+    onlineHost = host;
+    saveSettings();
+}
+
+void Settings::setOnlinePort(int port) {
+    onlinePort = port;
+    saveSettings();
 }
 

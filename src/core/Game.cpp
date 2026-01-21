@@ -33,6 +33,9 @@ Game::Game() : screens(window, font){
         throw std::runtime_error("Failed to load font: assets/arial.ttf");
     }
 
+    // Set frame rate limit to 60 FPS for smooth gameplay
+    window.setFramerateLimit(60);
+
     screens.push(std::make_unique<MainMenu>(font));
 }
 
@@ -62,7 +65,7 @@ void Game::run() {
         }
         
         try {
-            window.clear();
+            window.clear(sf::Color::Black);
             screens.render(window);
             window.display();
         } catch(const std::exception& e) {
