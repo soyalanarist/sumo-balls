@@ -184,7 +184,14 @@ sf::Vector2f AIController::getMovementDirection(
                 float inwardBias = (burstActive ? 0.02f : 0.05f);
                 targetDirection = normalize(targetDirection + normalize(toCenter) * inwardBias);
             }
-            if (mistakeChance(rng) < 0.005f) patrolSign *= -1;
+            // Soften back-and-forth by orbiting slightly around center
+            {
+                sf::Vector2f tangent(-toCenter.y, toCenter.x);
+                float edgeFactorOrbit = std::min(1.f, std::max(0.f, (arenaRadius - distToCenter) / (arenaRadius * 0.3f)));
+                float orbitBias = (0.14f + (1.f - difficulty) * 0.08f) * (1.f - 0.6f * edgeFactorOrbit);
+                targetDirection = normalize(targetDirection + tangent * orbitBias * static_cast<float>(patrolSign));
+            }
+            if (mistakeChance(rng) < 0.02f) patrolSign *= -1;
         } else {
             sf::Vector2f outward = normalize(selfPosition - arenaCenter);
             float preferredRing = arenaRadius * 0.82f;
@@ -195,7 +202,7 @@ sf::Vector2f AIController::getMovementDirection(
                 targetDirection = normalize(toCenter);
             } else {
                 sf::Vector2f tangent(-outward.y, outward.x);
-                float tangentGain = (0.55f + (1.f - difficulty) * 0.15f) + (burstActive ? 0.1f : 0.0f);
+                float tangentGain = (0.65f + (1.f - difficulty) * 0.2f) + (burstActive ? 0.12f : 0.0f);
                 targetDirection = normalize(tangent * tangentGain * static_cast<float>(patrolSign));
             }
         }
@@ -209,8 +216,8 @@ sf::Vector2f AIController::getMovementDirection(
             // Perpendicular component to desired direction for gentle arcs
             sf::Vector2f perp(-targetDirection.y, targetDirection.x);
             float edgeFactorW = std::min(1.f, std::max(0.f, (arenaRadius - distToCenter) / (arenaRadius * 0.25f)));
-            float wanderScale = wanderStrength * (burstActive ? 0.5f : 1.0f) * (1.f - 0.7f * edgeFactorW);
-            float curvaGain = (burstActive ? 0.08f : 0.12f) * (1.f - 0.6f * edgeFactorW);
+            float wanderScale = (wanderStrength * 1.15f) * (burstActive ? 0.55f : 1.0f) * (1.f - 0.55f * edgeFactorW);
+            float curvaGain = (burstActive ? 0.1f : 0.16f) * (1.f - 0.5f * edgeFactorW);
             targetDirection = normalize(targetDirection + perp * curvaGain + wanderVec * wanderScale);
         }
 
@@ -234,7 +241,7 @@ sf::Vector2f AIController::getMovementDirection(
             targetDirection = {0.f, 0.f};
         }
 
-        float smoothFactor = (edgeCooldown > 0.f) ? 0.97f : (burstActive ? 0.85f : 0.9f);
+        float smoothFactor = (edgeCooldown > 0.f) ? 0.9f : (burstActive ? 0.8f : 0.86f);
         sf::Vector2f blended = cachedDirection * smoothFactor + targetDirection * (1.f - smoothFactor);
         if (blended.x == 0.f && blended.y == 0.f) blended = cachedDirection;
         cachedDirection = normalize(blended);

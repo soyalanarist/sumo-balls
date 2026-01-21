@@ -30,8 +30,8 @@ private:
     float nextBurstDelay = 0.f;   // time until next burst starts
     // Wander/curvature to avoid straight-line traversals
     float wanderAngle = 0.f;      // evolving heading noise
-    float wanderJitter = 1.6f;    // radians/sec noise amplitude
-    float wanderStrength = 0.22f; // scale of wander vector blended into steering
+    float wanderJitter = 2.4f;    // radians/sec noise amplitude
+    float wanderStrength = 0.32f; // scale of wander vector blended into steering
     
     // Random number generator (centralized, reused across frames)
     mutable std::mt19937 rng{std::random_device{}()};
