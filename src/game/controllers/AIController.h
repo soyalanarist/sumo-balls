@@ -1,6 +1,7 @@
 // AIController.h
 #pragma once
 #include "Controller.h"
+#include <random>
 
 class AIController : public Controller {
 public:
@@ -31,6 +32,9 @@ private:
     float wanderAngle = 0.f;      // evolving heading noise
     float wanderJitter = 1.6f;    // radians/sec noise amplitude
     float wanderStrength = 0.22f; // scale of wander vector blended into steering
+    
+    // Random number generator (centralized, reused across frames)
+    mutable std::mt19937 rng{std::random_device{}()};
 
     // Helper methods
     float calculateAdvantage(float selfDist, float opponentDist) const;

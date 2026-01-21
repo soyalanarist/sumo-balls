@@ -6,6 +6,7 @@
 #include "../screens/menus/PauseMenu.h"
 #include "../screens/menus/GameOverMenu.h"
 #include "../screens/menus/MenuAction.h"
+#include <iostream>
 
 Game::Game() : screens(window, font){
     // Load settings from config file
@@ -51,9 +52,11 @@ void Game::run() {
         try {
             screens.update(deltaTime);
         } catch(const std::exception& e) {
+            std::cerr << "Game update error: " << e.what() << std::endl;
             window.close();
             break;
         } catch(...) {
+            std::cerr << "Unknown game update error occurred" << std::endl;
             window.close();
             break;
         }
@@ -63,9 +66,11 @@ void Game::run() {
             screens.render(window);
             window.display();
         } catch(const std::exception& e) {
+            std::cerr << "Game render error: " << e.what() << std::endl;
             window.close();
             break;
         } catch(...) {
+            std::cerr << "Unknown game render error occurred" << std::endl;
             window.close();
             break;
         }

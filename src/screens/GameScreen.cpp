@@ -6,30 +6,56 @@
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <cmath>
+#include <random>
+#include <algorithm>
+#include <iostream>
 
 GameScreen::GameScreen():
     arena({600.f, 450.f}, 300.f),
     initialArenaRadius(300.f){
-    // Human player at bottom-left with selected color
-    auto humanCtrl = std::make_unique<HumanController>();
-    players.emplace_back(sf::Vector2f(400.f, 550.f), std::move(humanCtrl), Settings::getPlayerColor());
     
-    // 5 AI players positioned around the arena with varied difficulties
-    // Positions arranged in a circle around arena center
+    // Load font once at initialization
+    if(!font.loadFromFile("assets/arial.ttf")) {
+        throw std::runtime_error("Failed to load font: assets/arial.ttf");
+    }
+    
+    // Calculate 6 equidistant spawn positions around arena center
+    sf::Vector2f arenaCenter = arena.center;
+    float spawnRadius = 200.f;  // Distance from center
+    std::vector<sf::Vector2f> spawnPositions;
+    
+    for(int i = 0; i < 6; i++) {
+        float angle = (i * 6.2831853f) / 6.f;  // 6 equally-spaced angles (60° apart)
+        float x = arenaCenter.x + spawnRadius * std::cos(angle);
+        float y = arenaCenter.y + spawnRadius * std::sin(angle);
+        spawnPositions.emplace_back(x, y);
+    }
+    
+    // Randomize which position each player gets
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::vector<int> indices = {0, 1, 2, 3, 4, 5};
+    std::shuffle(indices.begin(), indices.end(), rng);
+    
+    // Human player with selected color at randomized position
+    auto humanCtrl = std::make_unique<HumanController>();
+    players.emplace_back(spawnPositions[indices[0]], std::move(humanCtrl), Settings::getPlayerColor());
+    
+    // 5 AI players with randomized positions and varied difficulties
     auto ai1 = std::make_unique<AIController>(0.5f);  // 50% difficulty
-    players.emplace_back(sf::Vector2f(800.f, 550.f), std::move(ai1));
+    players.emplace_back(spawnPositions[indices[1]], std::move(ai1));
     
     auto ai2 = std::make_unique<AIController>(0.6f);  // 60% difficulty
-    players.emplace_back(sf::Vector2f(750.f, 350.f), std::move(ai2));
+    players.emplace_back(spawnPositions[indices[2]], std::move(ai2));
     
     auto ai3 = std::make_unique<AIController>(0.7f);  // 70% difficulty
-    players.emplace_back(sf::Vector2f(600.f, 250.f), std::move(ai3));
+    players.emplace_back(spawnPositions[indices[3]], std::move(ai3));
     
     auto ai4 = std::make_unique<AIController>(0.65f);  // 65% difficulty
-    players.emplace_back(sf::Vector2f(450.f, 350.f), std::move(ai4));
+    players.emplace_back(spawnPositions[indices[4]], std::move(ai4));
     
     auto ai5 = std::make_unique<AIController>(0.55f);  // 55% difficulty
-    players.emplace_back(sf::Vector2f(600.f, 500.f), std::move(ai5));
+    players.emplace_back(spawnPositions[indices[5]], std::move(ai5));
 }
 
 void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) {
@@ -123,8 +149,10 @@ void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) 
             gameOverTime += dt.asSeconds();  // Track time since game ended
         }
     } catch(const std::exception& e) {
+        std::cerr << "GameScreen update error: " << e.what() << std::endl;
         throw;
     } catch(...) {
+        std::cerr << "Unknown GameScreen update error" << std::endl;
         throw;
     }
 }
@@ -172,48 +200,37 @@ void GameScreen::render(sf::RenderWindow& window) {
             window.draw(overlay);
             
             // Load font for countdown numbers
-            static sf::Font font;
-            static bool fontLoaded = false;
-            if(!fontLoaded) {
-                if(font.loadFromFile("assets/arial.ttf")) {
-                    fontLoaded = true;
+            // Determine countdown number (3, 2, 1)
+            int countdownNumber = static_cast<int>(std::ceil(countdownTime));
+            if(countdownNumber > 0 && countdownNumber <= 3) {
+                sf::Text countdownText;
+                countdownText.setFont(font);
+                countdownText.setString(std::to_string(countdownNumber));
+                countdownText.setCharacterSize(200);
+                
+                // Use player's color
+                sf::Color playerColor = Settings::getPlayerColor();
+                
+                // Calculate fade effect (fade in and out within each second)
+                float timeInSecond = countdownTime - std::floor(countdownTime);
+                float fadeAlpha = 1.0f;
+                
+                // Fade in during first 0.2s, fade out during last 0.3s
+                if(timeInSecond > 0.7f) {
+                    fadeAlpha = (1.0f - timeInSecond) / 0.3f;  // Fade out
+                } else if(timeInSecond < 0.2f) {
+                    fadeAlpha = timeInSecond / 0.2f;  // Fade in
                 }
-            }
-            
-            if(fontLoaded) {
-                // Determine countdown number (3, 2, 1)
-                int countdownNumber = static_cast<int>(std::ceil(countdownTime));
-                if(countdownNumber > 0 && countdownNumber <= 3) {
-                    sf::Text countdownText;
-                    countdownText.setFont(font);
-                    countdownText.setString(std::to_string(countdownNumber));
-                    countdownText.setCharacterSize(200);
-                    
-                    // Use player's color
-                    sf::Color playerColor = Settings::getPlayerColor();
-                    
-                    // Calculate fade effect (fade in and out within each second)
-                    float timeInSecond = countdownTime - std::floor(countdownTime);
-                    float fadeAlpha = 1.0f;
-                    
-                    // Fade in during first 0.2s, fade out during last 0.3s
-                    if(timeInSecond > 0.7f) {
-                        fadeAlpha = (1.0f - timeInSecond) / 0.3f;  // Fade out
-                    } else if(timeInSecond < 0.2f) {
-                        fadeAlpha = timeInSecond / 0.2f;  // Fade in
-                    }
-                    
-                    playerColor.a = static_cast<sf::Uint8>(255 * fadeAlpha);
-                    countdownText.setFillColor(playerColor);
-                    
-                    // Center the text
-                    sf::FloatRect textBounds = countdownText.getLocalBounds();
-                    countdownText.setOrigin(textBounds.left + textBounds.width / 2.0f,
-                                           textBounds.top + textBounds.height / 2.0f);
-                    countdownText.setPosition(600.f, 400.f);
-                    
-                    window.draw(countdownText);
-                }
+
+                playerColor.a = static_cast<sf::Uint8>(255 * fadeAlpha);
+                countdownText.setFillColor(playerColor);
+
+                // Center the text
+                sf::FloatRect textBounds = countdownText.getLocalBounds();
+                countdownText.setOrigin(textBounds.left + textBounds.width / 2.0f,
+                                       textBounds.top + textBounds.height / 2.0f);
+                countdownText.setPosition(600.f, 400.f);
+                window.draw(countdownText);
             }
         }
         
@@ -227,8 +244,10 @@ void GameScreen::render(sf::RenderWindow& window) {
             // Note: Menu will be handled by ScreenStack when we return to main menu
         }
     } catch(const std::exception& e) {
+        std::cerr << "GameScreen render error: " << e.what() << std::endl;
         throw;
     } catch(...) {
+        std::cerr << "Unknown GameScreen render error" << std::endl;
         throw;
     }
 }
@@ -318,16 +337,19 @@ void GameScreen::resolvePlayerCollisions() {
             sf::Vector2f pos1 = players[i].getPosition();
             sf::Vector2f pos2 = players[j].getPosition();
             
-            float dx = pos2.x - pos1.x;
-            float dy = pos2.y - pos1.y;
-            float distance = std::sqrt(dx * dx + dy * dy);
-            
             float radius1 = players[i].getRadius();
             float radius2 = players[j].getRadius();
             float minDistance = radius1 + radius2;
             
-            if(distance < minDistance && distance > 0.001f) {
-                // Collision detected
+            // Use squared distance for faster collision check (avoid sqrt)
+            float dx = pos2.x - pos1.x;
+            float dy = pos2.y - pos1.y;
+            float distSq = dx * dx + dy * dy;
+            float minDistSq = minDistance * minDistance;
+            
+            if(distSq < minDistSq && distSq > 0.000001f) {
+                // Collision detected - now calculate actual distance for resolution
+                float distance = std::sqrt(distSq);
                 float overlap = minDistance - distance;
                 float pushDistance = overlap / 2.0f + 1.5f;  // Increased separation force
                 

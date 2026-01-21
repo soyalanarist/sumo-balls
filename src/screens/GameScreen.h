@@ -43,4 +43,5 @@ private:
     float initialArenaRadius = 300.f;     // Starting arena radius for speed scaling
     MenuAction menuAction = MenuAction::NONE;  // Track requested menu action
     float getSpeedMultiplier() const;     // Calculate speed multiplier based on shrinkage
+    sf::Font font;                        // Cached font for countdown text
 };

@@ -42,7 +42,7 @@ target_link_libraries(sumo_balls
 )
 
 if (MSVC)
-    target_compile_options(sumo_balls PRIVATE /W4)
+    target_compile_options(sumo_balls PRIVATE /W4 /O2)
 else()
-    target_compile_options(sumo_balls PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(sumo_balls PRIVATE -Wall -Wextra -Wpedantic -O3 -march=native)
 endif()

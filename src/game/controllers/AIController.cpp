@@ -15,7 +15,6 @@ static float magnitude(const sf::Vector2f& v){
 
 AIController::AIController(float diff) : difficulty(diff) {
     // Generate personality traits based on difficulty with some randomization
-    static std::mt19937 rng(std::random_device{}());
     std::uniform_real_distribution<float> variation(-0.15f, 0.15f);
     
     // Aggressiveness: 0.3-1.0, higher difficulty = more aggressive
@@ -99,7 +98,6 @@ sf::Vector2f AIController::getMovementDirection(
     float dangerZone = arenaRadius - (30.f + caution * 20.f);
     edgeCooldown = std::max(0.f, edgeCooldown - dt);
     if (distToCenter > dangerZone) {
-        static std::mt19937 rng(std::random_device{}());
         std::uniform_real_distribution<float> panicError(-0.08f, 0.08f);
         sf::Vector2f panicDirection = normalize(toCenter);
         panicDirection.x += panicError(rng);
@@ -120,7 +118,6 @@ sf::Vector2f AIController::getMovementDirection(
         if (nextBurstDelay <= 0.f) {
             burstActive = true;
             burstTimer = 5.0f;
-            static std::mt19937 rng(std::random_device{}());
             std::uniform_real_distribution<float> burstDelayDist(6.0f, 14.0f);
             nextBurstDelay = burstDelayDist(rng);
         }
@@ -131,7 +128,6 @@ sf::Vector2f AIController::getMovementDirection(
     float reactionTime = std::max(0.5f, reactionTimeBase - (burstActive ? 0.2f : 0.0f));
     if (decisionTimer <= 0.f) {
         decisionTimer = reactionTime;
-        static std::mt19937 rng(std::random_device{}());
         std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
         std::uniform_real_distribution<float> mistakeChance(0.0f, 1.0f);
         sf::Vector2f targetDirection{0.f, 0.f};
