@@ -7,7 +7,8 @@ echo "Starting Sumo Balls Server on port $PORT..."
 echo "Press Ctrl+C to stop"
 echo ""
 
-cd "$(dirname "$0")"
+# Change to project root
+cd "$(dirname "$0")/.." || exit 1
 
 if [ ! -f "./build/sumo_balls_server" ]; then
     echo "Error: Server executable not found!"

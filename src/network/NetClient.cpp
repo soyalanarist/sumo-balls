@@ -11,7 +11,7 @@ bool NetClient::connect(const std::string& host, std::uint16_t port) {
 
     client = enet_host_create(nullptr, 1, 2, 0, 0);
     if (!client) {
-        std::cerr << "Failed to create ENet client host" << std::endl;
+        std::cerr << "[NetClient Error] Failed to create ENet client host (target: " << host << ":" << port << ")" << std::endl;
         return false;
     }
 
@@ -21,7 +21,7 @@ bool NetClient::connect(const std::string& host, std::uint16_t port) {
 
     peer = enet_host_connect(client, &address, 2, 0);
     if (!peer) {
-        std::cerr << "Failed to initiate ENet connection" << std::endl;
+        std::cerr << "[NetClient Error] Failed to initiate connection to " << host << ":" << port << std::endl;
         disconnect();
         return false;
     }

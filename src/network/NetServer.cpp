@@ -15,7 +15,7 @@ bool NetServer::start(std::uint16_t port, std::size_t maxClients) {
 
     host = enet_host_create(&address, maxClients, 2, 0, 0);
     if (!host) {
-        std::cerr << "Failed to create ENet server on port " << port << "\n";
+        std::cerr << "[NetServer Error] Failed to create ENet server (port: " << port << ", maxClients: " << maxClients << ")" << std::endl;
         return false;
     }
     return true;
@@ -57,15 +57,24 @@ void NetServer::service(int timeoutMs,
 bool NetServer::broadcast(const std::vector<std::uint8_t>& data, bool reliable) {
     if (!host) return false;
     ENetPacket* packet = enet_packet_create(data.data(), data.size(), reliable ? ENET_PACKET_FLAG_RELIABLE : 0);
-    if (!packet) return false;
+    if (!packet) {
+        std::cerr << "[NetServer Warning] Failed to create broadcast packet (size: " << data.size() << " bytes)" << std::endl;
+        return false;
+    }
     enet_host_broadcast(host, reliable ? 1 : 0, packet);
     return true;
 }
 
 bool NetServer::sendTo(ENetPeer* peer, const std::vector<std::uint8_t>& data, bool reliable) {
-    if (!peer) return false;
+    if (!peer) {
+        std::cerr << "[NetServer Warning] Attempted to send to null peer" << std::endl;
+        return false;
+    }
     ENetPacket* packet = enet_packet_create(data.data(), data.size(), reliable ? ENET_PACKET_FLAG_RELIABLE : 0);
-    if (!packet) return false;
+    if (!packet) {
+        std::cerr << "[NetServer Warning] Failed to create packet for peer (size: " << data.size() << " bytes)" << std::endl;
+        return false;
+    }
     return enet_peer_send(peer, reliable ? 1 : 0, packet) == 0;
 }
 

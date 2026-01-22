@@ -1,4 +1,5 @@
 #include "PlayerEntity.h"
+#include "../PhysicsValidator.h"
 #include <iostream>
 
 PlayerEntity::PlayerEntity(
@@ -26,6 +27,13 @@ void PlayerEntity::update(
 
     player.setMovementDirection(dir);
     player.update(dt, speedMultiplier);
+    
+    // Validate physics state after update
+    sf::Vector2f pos = player.getPosition();
+    sf::Vector2f vel = player.getVelocity();
+    
+    PhysicsValidator::assertPositionValid(pos, "PlayerEntity::update");
+    PhysicsValidator::assertVelocityValid(vel, "PlayerEntity::update");
 }
 
 void PlayerEntity::render(sf::RenderWindow& window) {

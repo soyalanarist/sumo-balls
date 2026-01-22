@@ -1,6 +1,8 @@
 #include "Simulation.h"
+#include "../game/PhysicsValidator.h"
 
 #include <cmath>
+#include <iostream>
 
 namespace {
 float magnitude(const sf::Vector2f& v) {
@@ -61,6 +63,10 @@ void Simulation::tick(float dt) {
         }
 
         p.position += p.velocity * dt;
+        
+        // Validate physics state
+        PhysicsValidator::validateAndClampPosition(p.position);
+        PhysicsValidator::validateAndClampVelocity(p.velocity);
 
         // Death if too far outside arena (50% of radius buffer)
         sf::Vector2f toCenter = p.position - center;
@@ -120,8 +126,18 @@ void Simulation::resolveCollisions() {
             sf::Vector2f newVb(newVbN * nx + vbT * (-ny), newVbN * ny + vbT * nx);
 
             constexpr float impulseBoost = 1.15f;
-            pa->velocity += (newVa - pa->velocity) * impulseBoost;
-            pb->velocity += (newVb - pb->velocity) * impulseBoost;
+            sf::Vector2f impulseA = (newVa - pa->velocity) * impulseBoost;
+            sf::Vector2f impulseB = (newVb - pb->velocity) * impulseBoost;
+            
+            // Validate impulses before applying
+            if (!PhysicsValidator::isVelocityValid(impulseA) || 
+                !PhysicsValidator::isVelocityValid(impulseB)) {
+                std::cerr << "[Simulation] Invalid collision impulse detected, skipping" << std::endl;
+                continue;
+            }
+            
+            pa->velocity += impulseA;
+            pb->velocity += impulseB;
         }
     }
 }

@@ -2,6 +2,7 @@
 #include "../core/Screen.h"
 #include "../game/entities/PlayerEntity.h"
 #include "../game/entities/Arena.h"
+#include "../game/GamePhase.h"
 #include "menus/MenuAction.h"
 #include "../network/NetClient.h"
 #include "../network/NetProtocol.h"
@@ -18,22 +19,27 @@ struct Particle {
     float lifetime;        // Total lifetime in seconds
     float timeRemaining;   // Time left before particle dies
     float radius;
+    sf::Color color;       // Color-dependent particles
 };
 
 class GameScreen : public Screen {
 public:
-    GameScreen();
+    explicit GameScreen(bool forceOffline = false);
 
     void update(sf::Time deltaTime, sf::RenderWindow& window) override;
     void render(sf::RenderWindow& window) override;
     bool isOverlay() const override { return false; }
 
     void resolvePlayerCollisions();
-    void createExplosion(sf::Vector2f position, sf::Vector2f velocity);
+    void createExplosion(sf::Vector2f position, sf::Vector2f velocity, sf::Color color);
     void updateParticles(float dt);
     
     MenuAction getMenuAction() const override;
     void resetMenuAction() override;
+    
+    // State access for GameEndedScreen
+    GamePhase getGamePhase() const { return gamePhase; }
+    const std::vector<PlayerEntity>& getPlayers() const { return players; }
 
 private:
     // Offline/local state
@@ -43,14 +49,17 @@ private:
     std::vector<Particle> particles;      // Explosion particles
     int frameCount = 0;  // Instance member instead of static
     float gameTime = 0.f;                 // Total elapsed game time
+    GamePhase gamePhase = GamePhase::Countdown;  // State machine for game phases
     float countdownTime = 3.0f;           // Countdown before game starts
-    bool countdownActive = true;          // Whether countdown is running
-    bool gameOver = false;
     float gameOverTime = 0.f;             // Time since game ended
     float initialArenaRadius = 300.f;     // Starting arena radius for speed scaling
     MenuAction menuAction = MenuAction::NONE;  // Track requested menu action
     float getSpeedMultiplier() const;     // Calculate speed multiplier based on shrinkage
     sf::Font font;                        // Cached font for countdown text
+    
+    void transitionToPhase(GamePhase newPhase);  // Safe state transitions
+    void updateGamePhase(sf::Time dt);  // Update single-player game logic
+    void initializeLocalGame();  // Set up single-player game with AI opponents
 
     // Online session state (authoritative server)
     bool onlineMode = false;

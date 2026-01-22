@@ -11,6 +11,22 @@ import (
 	"time"
 )
 
+// Helper constants
+const (
+	timeHour = time.Hour
+)
+
+// Helper functions
+func timeNow() time.Time {
+	return time.Now()
+}
+
+func respondJSON(w http.ResponseWriter, data interface{}, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(data)
+}
+
 // ============================================================================
 // TYPES & DATA STRUCTURES
 // ============================================================================
@@ -485,15 +501,46 @@ func timeNowMs() int64 {
 // ============================================================================
 
 func main() {
-	// Create coordinator instance
+	// Initialize database
+	db, err := NewDatabase("coordinator.db")
+	if err != nil {
+		log.Fatalf("[Fatal] Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	// Initialize services
+	authService := NewAuthService(db)
+	friendsService := NewFriendsService(db)
+	lobbyService := NewLobbyService(db)
+
+	// Create coordinator instance (for legacy matchmaking endpoints)
 	coord := NewCoordinator()
 
 	// Start matchmaking loop in a separate goroutine (async, like std::thread)
 	// This runs in the background, checking queue every 2 seconds
 	go coord.MatchmakingLoop(2 * time.Second)
 
-	// Register HTTP handlers (route -> handler function)
-	// In C++, this would be like registering routes in a web framework (e.g., Pistache)
+	// Auth endpoints (public - no auth required)
+	http.HandleFunc("/auth/register", authService.handleRegister)
+	http.HandleFunc("/auth/login", authService.handleLogin)
+	http.HandleFunc("/auth/logout", authService.handleLogout)
+	http.HandleFunc("/auth/me", authService.authMiddleware(authService.handleMe))
+
+	// Friend endpoints (require authentication)
+	http.HandleFunc("/friends/send", authService.authMiddleware(friendsService.handleSendRequest))
+	http.HandleFunc("/friends/accept", authService.authMiddleware(friendsService.handleAcceptRequest))
+	http.HandleFunc("/friends/remove", authService.authMiddleware(friendsService.handleRemoveFriend))
+	http.HandleFunc("/friends/list", authService.authMiddleware(friendsService.handleListFriends))
+	http.HandleFunc("/friends/pending", authService.authMiddleware(friendsService.handlePendingRequests))
+
+	// Lobby endpoints (require authentication)
+	http.HandleFunc("/lobby/create", authService.authMiddleware(lobbyService.handleCreateLobby))
+	http.HandleFunc("/lobby/join", authService.authMiddleware(lobbyService.handleJoinLobby))
+	http.HandleFunc("/lobby/leave", authService.authMiddleware(lobbyService.handleLeaveLobby))
+	http.HandleFunc("/lobby/ready", authService.authMiddleware(lobbyService.handleSetReady))
+	http.HandleFunc("/lobby/get", authService.authMiddleware(lobbyService.handleGetLobby))
+
+	// Legacy matchmaking endpoints (for backward compatibility)
 	http.HandleFunc("/enqueue", coord.handleEnqueue)
 	http.HandleFunc("/cancel", coord.handleCancel)
 	http.HandleFunc("/queue/status", coord.handleStatus)
@@ -502,10 +549,9 @@ func main() {
 	http.HandleFunc("/matches", coord.handleMatches) // Debug endpoint
 
 	// Start HTTP server on port 8888
-	// In C++: auto server = std::make_unique<Server>(...);
-	//         server->listen(8888);
 	port := ":8888"
-	log.Printf("[Coordinator] Starting on %s\n", port)
+	log.Printf("[Coordinator] Starting with auth, friends, and lobby system on %s\n", port)
+	log.Printf("[Coordinator] Database: coordinator.db\n")
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

@@ -23,11 +23,16 @@ add_executable(sumo_balls
     src/core/Screen.cpp
     src/core/ScreenStack.cpp
     src/core/Settings.cpp
+    src/core/SettingsManager.cpp
     src/ui/UIElement.cpp
     src/ui/Button.cpp
     src/ui/ToggleSwitch.cpp
 
     src/screens/GameScreen.cpp
+    src/screens/GameEndedScreen.cpp
+    src/screens/AuthScreen.cpp
+    src/screens/FriendsScreen.cpp
+    src/screens/LobbyScreen.cpp
     src/screens/menus/MainMenu.cpp
     src/screens/menus/OptionsMenu.cpp
     src/screens/menus/PauseMenu.cpp
@@ -43,6 +48,11 @@ add_executable(sumo_balls
     src/network/NetCommon.cpp
     src/network/NetServer.cpp
     src/network/NetClient.cpp
+    src/network/GameNetworkManager.cpp
+
+    src/game/GamePhysics.cpp
+
+    src/ui/GameOverlay.cpp
 
     src/systems/InputSystem.cpp
 )
@@ -77,6 +87,29 @@ if (MSVC)
 else()
     target_compile_options(sumo_balls_server PRIVATE -Wall -Wextra -Wpedantic -O3 -march=native)
 endif()
+
+# Unit tests
+add_executable(test_physics
+    tests/test_physics.cpp
+)
+
+target_include_directories(test_physics PRIVATE include)
+target_link_libraries(test_physics
+    sfml-system
+)
+
+add_executable(test_ui
+    tests/test_ui.cpp
+    src/ui/UIElement.cpp
+    src/ui/Button.cpp
+)
+
+target_include_directories(test_ui PRIVATE include)
+target_link_libraries(test_ui
+    sfml-graphics
+    sfml-window
+    sfml-system
+)
 
 if (MSVC)
     target_compile_options(sumo_balls PRIVATE /W4 /O2)

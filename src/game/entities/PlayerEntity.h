@@ -33,6 +33,7 @@ public:
     sf::Vector2f getPosition() const;
     float getRadius() const;
     float getMass() const;
+    sf::Color getColor() const { return player.getColor(); }
     sf::Vector2f getVelocity() const;
     void move(sf::Vector2f offset);
     void addVelocity(sf::Vector2f impulse);

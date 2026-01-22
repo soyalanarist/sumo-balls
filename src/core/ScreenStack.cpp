@@ -5,6 +5,8 @@
 #include "../screens/menus/PauseMenu.h"
 #include "../screens/menus/MenuAction.h"
 #include "../screens/GameScreen.h"
+#include "../screens/FriendsScreen.h"
+#include "../screens/LobbyScreen.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
@@ -44,10 +46,19 @@ void ScreenStack::update(sf::Time deltaTime) {
     MenuAction action = screens.back()->getMenuAction();
     
     if(action != MenuAction::NONE) {
+        std::cout << "[ScreenStack] Menu action triggered: " << (int)action << std::endl;
         switch(action){
+            case MenuAction::START_SINGLEPLAYER:
+                std::cout << "[ScreenStack] Creating GameScreen (offline single-player)..." << std::endl;
+                pop();
+                push(std::make_unique<GameScreen>(true));
+                std::cout << "[ScreenStack] GameScreen created (offline)" << std::endl;
+                break;
             case MenuAction::START_GAME:
+                std::cout << "[ScreenStack] Creating GameScreen..." << std::endl;
                 pop();
                 push(std::make_unique<GameScreen>());
+                std::cout << "[ScreenStack] GameScreen created" << std::endl;
                 break;
             case MenuAction::OPTIONS: {
                 // Check if we're in a game (overlay) or in menu
@@ -68,6 +79,12 @@ void ScreenStack::update(sf::Time deltaTime) {
                 break;
             case MenuAction::PAUSE:
                 push(std::make_unique<PauseMenu>(font));
+                break;
+            case MenuAction::FRIENDS:
+                push(std::make_unique<FriendsScreen>(font));
+                break;
+            case MenuAction::LOBBIES:
+                push(std::make_unique<LobbyScreen>(font));
                 break;
             case MenuAction::SET_WINDOWED: {
                 // Preserve anti-aliasing by requesting MSAA when recreating the window

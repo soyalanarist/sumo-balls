@@ -1,17 +1,35 @@
 # Build artifacts
-/build/
-
-# Object files
+build/
 *.o
+*.a
+*.so
 *.obj
+*.exe
 
 # Executables
-*.exe
 sumo_balls
+sumo_balls_server
+test_physics
+test_ui
 
-# Editor / tooling
+# Log files
+logs/*.log
+*.log
+
+# Configuration (user-specific)
+config/*.json
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 compile_commands.json
 
-# OS junk
+# OS
 .DS_Store
+Thumbs.db
+
+# Temporary files
+notes.txt

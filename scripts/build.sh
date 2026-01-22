@@ -1,6 +1,9 @@
 #!/bin/bash
 # Build script for Sumo Balls
 
+# Change to project root
+cd "$(dirname "$0")/.." || exit 1
+
 echo "=== Building Sumo Balls ==="
 echo ""
 
@@ -64,8 +67,10 @@ echo "Executables created:"
 echo "  ./build/sumo_balls        - Game client"
 echo "  ./build/sumo_balls_server - Dedicated server"
 echo ""
-echo "Quick start:"
-echo "  ./run-server.sh           - Start server"
-echo "  ./run-client.sh           - Start client (online)"
-echo "  ./build/sumo_balls        - Start client (offline)"
+echo "Quick start (online only - start in this order):"
+echo "  1. ./coordinator/run.sh     - Start matchmaking coordinator (port 8888)"
+echo "  2. ./scripts/run-server.sh  - Start game server (registers with coordinator)"
+echo "  3. ./scripts/run-client.sh  - Start client (connects to server)"
+echo ""
+echo "Note: Coordinator requires Go 1.21+. Each runs independently in its own terminal."
 echo ""

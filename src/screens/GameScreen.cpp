@@ -1,83 +1,114 @@
 #include "GameScreen.h"
 #include "menus/GameOverMenu.h"
+#include "../game/GamePhase.h"
 #include "../game/controllers/HumanController.h"
 #include "../game/controllers/AIController.h"
 #include "../core/Settings.h"
+#include "../utils/GameConstants.h"
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <cmath>
+#include <thread>
 #include <random>
 #include <algorithm>
 #include <iostream>
 #include <cstdlib>
 #include <chrono>
 
-GameScreen::GameScreen():
-    arena({600.f, 450.f}, 300.f),
-    initialArenaRadius(300.f){
+GameScreen::GameScreen(bool forceOffline):
+    arena({GameConstants::ARENA_CENTER_X, GameConstants::ARENA_CENTER_Y}, GameConstants::ARENA_RADIUS),
+    initialArenaRadius(GameConstants::ARENA_RADIUS){
+    
+    std::cout << "[GameScreen] Constructor starting (forceOffline=" << forceOffline << ")" << std::endl;
     
     // Load font once at initialization
     if(!font.loadFromFile("assets/arial.ttf")) {
         throw std::runtime_error("Failed to load font: assets/arial.ttf");
     }
+    
+    std::cout << "[GameScreen] Font loaded" << std::endl;
 
-    initOnlineConfigFromEnv();
-
-    if(onlineMode) {
-        // Online: players will be created from server snapshots; no local AI spawn
-        countdownActive = false;  // Disable countdown in online mode
+    // Short-circuit for offline single-player
+    if(forceOffline) {
+        onlineMode = false;
+        gamePhase = GamePhase::Playing;
+        countdownTime = 0.f;
+        initializeLocalGame();
+        std::cout << "[GameScreen] Forced offline start (single-player)" << std::endl;
         return;
     }
+
+    initOnlineConfigFromEnv();
+    std::cout << "[GameScreen] Online config initialized, onlineMode=" << onlineMode << std::endl;
+
+    // Attempt to connect with a shorter timeout
+    const int maxAttempts = 50;  // ~1 second at 20ms interval
+    int attempts = 0;
+    while (attempts < maxAttempts) {
+        if (!netConnected) {
+            netClient.connect(netHost, netPort);
+        }
+        handleNetService();
+        if (netConnected) {
+            gamePhase = GamePhase::Playing;  // Online mode starts in playing state
+            onlineMode = true;
+            std::cout << "[GameScreen] Connected to server in online mode" << std::endl;
+            return;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        ++attempts;
+    }
+
+    // Fallback to single-player mode if connection fails
+    onlineMode = false;
+    gamePhase = GamePhase::Countdown;
+    countdownTime = 3.0f;
+    std::cout << "[GameScreen] Failed to connect to server, starting in single-player mode" << std::endl;
     
-    // Calculate 6 equidistant spawn positions around arena center
-    sf::Vector2f arenaCenter = arena.center;
-    float spawnRadius = 200.f;  // Distance from center
-    std::vector<sf::Vector2f> spawnPositions;
+    // Initialize local single-player game with AI opponents
+    initializeLocalGame();
+    std::cout << "[GameScreen] Constructor completed successfully" << std::endl;
+}
+
+void GameScreen::initializeLocalGame() {
+    // Create human player (player 0) with white color
+    sf::Vector2f humanStartPos = arena.getCenter() + sf::Vector2f(-100.f, 0.f);
+    auto humanController = std::make_unique<HumanController>();
+    players.emplace_back(humanStartPos, std::move(humanController), sf::Color::White);
     
-    for(int i = 0; i < 6; i++) {
-        float angle = (i * 6.2831853f) / 6.f;  // 6 equally-spaced angles (60° apart)
-        float x = arenaCenter.x + spawnRadius * std::cos(angle);
-        float y = arenaCenter.y + spawnRadius * std::sin(angle);
-        spawnPositions.emplace_back(x, y);
+    // Create 5 AI opponents with different colors and difficulties
+    sf::Color aiColors[] = {
+        sf::Color::Red,
+        sf::Color::Green,
+        sf::Color::Blue,
+        sf::Color::Yellow,
+        sf::Color::Magenta
+    };
+    
+    float difficulties[] = {0.3f, 0.4f, 0.5f, 0.6f, 0.7f};
+    
+    for(int i = 0; i < 5; ++i) {
+        // Distribute AI players around the arena
+        float angle = (2.f * 3.14159f / 5.f) * i;
+        float distance = 150.f;
+        sf::Vector2f aiPos = arena.getCenter() + sf::Vector2f(
+            distance * std::cos(angle),
+            distance * std::sin(angle)
+        );
+        
+        auto aiController = std::make_unique<AIController>(difficulties[i]);
+        players.emplace_back(aiPos, std::move(aiController), aiColors[i]);
     }
     
-    // Randomize which position each player gets
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::vector<int> indices = {0, 1, 2, 3, 4, 5};
-    std::shuffle(indices.begin(), indices.end(), rng);
-    
-    // Human player with selected color at randomized position
-    auto humanCtrl = std::make_unique<HumanController>();
-    players.emplace_back(spawnPositions[indices[0]], std::move(humanCtrl), Settings::getPlayerColor());
-    
-    // 5 AI players with randomized positions and varied difficulties
-    auto ai1 = std::make_unique<AIController>(0.5f);  // 50% difficulty
-    players.emplace_back(spawnPositions[indices[1]], std::move(ai1));
-    
-    auto ai2 = std::make_unique<AIController>(0.6f);  // 60% difficulty
-    players.emplace_back(spawnPositions[indices[2]], std::move(ai2));
-    
-    auto ai3 = std::make_unique<AIController>(0.7f);  // 70% difficulty
-    players.emplace_back(spawnPositions[indices[3]], std::move(ai3));
-    
-    auto ai4 = std::make_unique<AIController>(0.65f);  // 65% difficulty
-    players.emplace_back(spawnPositions[indices[4]], std::move(ai4));
-    
-    auto ai5 = std::make_unique<AIController>(0.55f);  // 55% difficulty
-    players.emplace_back(spawnPositions[indices[5]], std::move(ai5));
+    std::cout << "[GameScreen] Initialized local game with 1 player + 5 AI opponents" << std::endl;
 }
 
 void GameScreen::initOnlineConfigFromEnv() {
-    onlineMode = Settings::onlineEnabled;
+    onlineMode = true;  // Online-only mode enforced
     netHost = Settings::onlineHost;
     netPort = static_cast<std::uint16_t>(Settings::onlinePort);
 
-    if (const char* envOnline = std::getenv("SUMO_ONLINE")) {
-        std::string v(envOnline);
-        std::transform(v.begin(), v.end(), v.begin(), ::tolower);
-        onlineMode = (v == "1" || v == "true" || v == "yes");
-    }
+    // Allow host/port overrides via env for flexibility
     if (const char* envHost = std::getenv("SUMO_HOST")) {
         netHost = envHost;
     }
@@ -279,115 +310,118 @@ void GameScreen::interpolateSnapshots() {
     applyLerp(prev, next, alpha);
 }
 
+void GameScreen::transitionToPhase(GamePhase newPhase) {
+    if (isValidTransition(gamePhase, newPhase)) {
+        gamePhase = newPhase;
+    }
+}
+
+void GameScreen::updateGamePhase(sf::Time dt) {
+    // Single-player game loop
+    gameTime += dt.asSeconds();
+    
+    switch(gamePhase) {
+        case GamePhase::Countdown: {
+            countdownTime -= dt.asSeconds();
+            if(countdownTime <= 0.f) {
+                transitionToPhase(GamePhase::Playing);
+            }
+            break;
+        }
+        case GamePhase::Playing: {
+            // Update arena shrinking a bit faster for visibility
+            float shrinkRate = 30.f;  // pixels per second
+            float newRadius = arena.getRadius() - shrinkRate * dt.asSeconds();
+            arena.setRadius(std::max(50.f, newRadius));
+            
+            // Collect player positions
+            std::vector<sf::Vector2f> positions;
+            for(const auto& player : players) {
+                if(player.isAlive()) {
+                    positions.push_back(player.getPosition());
+                }
+            }
+            
+            // Update all players with AI/human control
+            for(size_t i = 0; i < players.size(); ++i) {
+                if(!players[i].isAlive()) continue;
+                std::vector<sf::Vector2f> otherPositions;
+                for(size_t j = 0; j < positions.size(); ++j) {
+                    if(i != j) {
+                        otherPositions.push_back(positions[j]);
+                    }
+                }
+                
+                float speedMult = getSpeedMultiplier();
+                players[i].update(dt.asSeconds(), otherPositions, arena.getCenter(), arena.getRadius(), speedMult);
+
+                // Eliminate players that leave the arena
+                if(!arena.contains(players[i].getPosition(), -players[i].getRadius() * 0.2f)) {
+                    createExplosion(players[i].getPosition(), players[i].getVelocity(), players[i].getColor());
+                    players[i].setAlive(false);
+                }
+            }
+            
+            // Handle collisions
+            resolvePlayerCollisions();
+            
+            // Check if only one player remains
+            int aliveCount = 0;
+            for(size_t i = 0; i < players.size(); ++i) {
+                if(players[i].isAlive()) {
+                    aliveCount++;
+                }
+            }
+            
+            // Game ends when arena is too small or only one player left
+            if(arena.getRadius() <= 50.f || aliveCount <= 1) {
+                transitionToPhase(GamePhase::GameOver);
+                gameOverTime = 0.f;
+            }
+
+            // Debug: log offline state periodically
+            static float debugTimer = 0.f;
+            debugTimer += dt.asSeconds();
+            if(debugTimer >= 1.f) {
+                std::cout << "[SP] radius=" << arena.getRadius() << " alive=" << aliveCount << std::endl;
+                debugTimer = 0.f;
+            }
+            break;
+        }
+        case GamePhase::GameOver: {
+            gameOverTime += dt.asSeconds();
+            break;
+        }
+        case GamePhase::Paused: {
+            // Paused state - do nothing
+            break;
+        }
+    }
+
+    // Update particle effects every frame (offline)
+    updateParticles(dt.asSeconds());
+}
+
 void GameScreen::update(sf::Time dt, [[maybe_unused]] sf::RenderWindow& window) {
     try{
         frameCount++;
         
-        // Online client mode: process networking FIRST, before countdown logic
-        if(onlineMode) {
-            if(!netConnected) {
-                static bool connectionAttempted = false;
-                if (!connectionAttempted) {
-                    if(netClient.connect(netHost, netPort)) {
-                        connectionAttempted = true;
-                    }
-                }
-            }
+        // Online client mode: process networking FIRST, before any gameplay
+        if(onlineMode && !netConnected) {
+            throw std::runtime_error("Lost connection in online mode");
+        }
 
+        if(onlineMode) {
             handleNetService();
             sendNetInput(dt.asSeconds());
             sendNetPing(dt.asSeconds());
-
             interpolateSnapshots();
-            return;
-        }
-        
-        // Handle countdown before game starts (offline mode only)
-        if(countdownActive) {
-            countdownTime -= dt.asSeconds();
-            if(countdownTime <= 0.f) {
-                countdownActive = false;
-                countdownTime = 0.f;
-            }
-            // During countdown, don't update game logic
-            return;
-        }
-        
-        // Increment game time only if game is not over
-        if(!gameOver) {
-            gameTime += dt.asSeconds();
-        }
-        
-        // Check for pause key (P)
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::P)) {
-            menuAction = MenuAction::PAUSE;
-            return;  // Don't update game state if pausing
-        }
-        
-        menuAction = MenuAction::NONE;  // Clear any pending actions
-        positions.clear();
-        positions.reserve(players.size());
-        for(auto& p : players){
-            if(p.isAlive()){
-                positions.push_back(p.getPosition());
-            }
-        }
-
-        for(auto& p : players){
-            float speedMult = getSpeedMultiplier();
-            p.update(dt.asSeconds(), positions, arena.center, arena.radius, speedMult);
-        }
-        
-        resolvePlayerCollisions();
-        
-        // Shrink arena over time (continuous shrinking until game ends)
-        if(!gameOver) {
-            float shrinkRate = 5.0f;  // pixels per second
-            float newRadius = 300.f - (gameTime * shrinkRate);
-            if(newRadius > 0.f) {
-                arena.setRadius(newRadius);
-            }
-        }
-        
-        // Check arena boundaries - mark players as dead if 50% outside arena
-        for(auto& p : players){
-            if(p.isAlive()) {
-                sf::Vector2f playerPos = p.getPosition();
-                float playerRadius = p.getRadius();
-                
-                // Distance from player center to arena center
-                float dx = playerPos.x - arena.center.x;
-                float dy = playerPos.y - arena.center.y;
-                float distToCenter = std::sqrt(dx * dx + dy * dy);
-                
-                // Player is dead if their center is more than (arenaRadius + 50% of playerRadius) away
-                float deathDistance = arena.radius + playerRadius * 0.5f;
-                
-                if(distToCenter > deathDistance) {
-                    // Create explosion before marking dead
-                    createExplosion(playerPos, p.getVelocity());
-                    p.setAlive(false);
-                }
-            }
-        }
-        
-        // Update particles
-        updateParticles(dt.asSeconds());
-        
-        // Check if game is over (only one player alive)
-        if(!gameOver){
-            int aliveCount = 0;
-            for(auto& p : players){
-                if(p.isAlive()) aliveCount++;
-            }
-            
-            if(aliveCount <= 1) {
-                gameOver = true;
-                gameOverTime = 0.f;  // Start game over timer
-            }
         } else {
-            gameOverTime += dt.asSeconds();  // Track time since game ended
+            // Single-player mode: update local game state
+            // For now, just handle arena shrinking and game loop
+            updateGamePhase(dt);
         }
+        return;
     } catch(const std::exception& e) {
         std::cerr << "GameScreen update error: " << e.what() << std::endl;
         throw;
@@ -409,99 +443,65 @@ float GameScreen::getSpeedMultiplier() const {
 
 void GameScreen::render(sf::RenderWindow& window) {
     try {
+        arena.render(window);
+        
         if(onlineMode) {
-            arena.render(window);
             for(auto& kv : netPlayers) {
                 if(kv.second.isAlive()) {
                     kv.second.render(window);
                 }
             }
-            // HUD: show RTT/status
-            sf::Text netInfo;
-            netInfo.setFont(font);
-            netInfo.setCharacterSize(18);
-            netInfo.setFillColor(sf::Color::White);
-            std::string rttStr = (rttMs >= 0.f) ? std::to_string(static_cast<int>(rttMs)) + " ms" : "--";
-            netInfo.setString("Online  RTT: " + rttStr);
-            netInfo.setPosition(10.f, 10.f);
-            window.draw(netInfo);
-            return;
-        }
-
-        arena.render(window);
-
-        for (auto& playerEntity : players) {
-            if (playerEntity.isAlive()) {
-                playerEntity.render(window);
-            }
-        }
-        
-        // Render particles
-        for(auto& particle : particles) {
-            sf::CircleShape particleShape(particle.radius);
-            
-            // Calculate alpha fade (fade out as particle dies)
-            float alphaRatio = particle.timeRemaining / particle.lifetime;
-            int alpha = static_cast<int>(255.f * alphaRatio);
-            
-            particleShape.setFillColor(sf::Color(255, 200, 100, alpha));  // Orange/yellow particles
-            particleShape.setPosition(particle.position.x - particle.radius, 
-                                     particle.position.y - particle.radius);
-            
-            window.draw(particleShape);
-        }
-        
-        // Countdown overlay before game starts
-        if(countdownActive) {
-            // Draw greyed out overlay
-            sf::RectangleShape overlay({1200.f, 900.f});
-            overlay.setFillColor(sf::Color(0, 0, 0, 150));
-            window.draw(overlay);
-            
-            // Load font for countdown numbers
-            // Determine countdown number (3, 2, 1)
-            int countdownNumber = static_cast<int>(std::ceil(countdownTime));
-            if(countdownNumber > 0 && countdownNumber <= 3) {
-                sf::Text countdownText;
-                countdownText.setFont(font);
-                countdownText.setString(std::to_string(countdownNumber));
-                countdownText.setCharacterSize(200);
-                
-                // Use player's color
-                sf::Color playerColor = Settings::getPlayerColor();
-                
-                // Calculate fade effect (fade in and out within each second)
-                float timeInSecond = countdownTime - std::floor(countdownTime);
-                float fadeAlpha = 1.0f;
-                
-                // Fade in during first 0.2s, fade out during last 0.3s
-                if(timeInSecond > 0.7f) {
-                    fadeAlpha = (1.0f - timeInSecond) / 0.3f;  // Fade out
-                } else if(timeInSecond < 0.2f) {
-                    fadeAlpha = timeInSecond / 0.2f;  // Fade in
+        } else {
+            // Single-player mode: render local players
+            for(auto& player : players) {
+                if(player.isAlive()) {
+                    player.render(window);
                 }
-
-                playerColor.a = static_cast<sf::Uint8>(255 * fadeAlpha);
-                countdownText.setFillColor(playerColor);
-
-                // Center the text
-                sf::FloatRect textBounds = countdownText.getLocalBounds();
-                countdownText.setOrigin(textBounds.left + textBounds.width / 2.0f,
-                                       textBounds.top + textBounds.height / 2.0f);
-                countdownText.setPosition(600.f, 400.f);
-                window.draw(countdownText);
+            }
+            // Render particle effects for eliminations
+            for(const auto& p : particles) {
+                sf::CircleShape c;
+                c.setRadius(p.radius);
+                c.setOrigin(p.radius, p.radius);
+                c.setPosition(p.position);
+                // Use color-dependent particle color (use player's color with some transparency)
+                sf::Color particleColor = p.color;
+                particleColor.a = static_cast<sf::Uint8>(180 * (p.timeRemaining / p.lifetime));  // Fade out
+                c.setFillColor(particleColor);
+                window.draw(c);
             }
         }
         
-        // If game is over, show overlay message
-        if(gameOver) {
-            // Draw semi-transparent overlay
-            sf::RectangleShape overlay({1200.f, 900.f});
-            overlay.setFillColor(sf::Color(0, 0, 0, 100));
-            window.draw(overlay);
-            
-            // Note: Menu will be handled by ScreenStack when we return to main menu
+        // HUD: show game phase and status
+        sf::Text gameInfo;
+        gameInfo.setFont(font);
+        gameInfo.setCharacterSize(18);
+        gameInfo.setFillColor(sf::Color::White);
+        
+        std::string statusStr;
+        if(onlineMode) {
+            std::string rttStr = (rttMs >= 0.f) ? std::to_string(static_cast<int>(rttMs)) + " ms" : "--";
+            statusStr = "Online  RTT: " + rttStr;
+        } else {
+            switch(gamePhase) {
+                case GamePhase::Countdown:
+                    statusStr = "Starting in " + std::to_string(static_cast<int>(countdownTime + 1)) + "...";
+                    break;
+                case GamePhase::Playing:
+                    statusStr = "Single-Player";
+                    break;
+                case GamePhase::GameOver:
+                    statusStr = "Game Over";
+                    break;
+                default:
+                    statusStr = "Paused";
+            }
         }
+        
+        gameInfo.setString(statusStr);
+        gameInfo.setPosition(10.f, 10.f);
+        window.draw(gameInfo);
+        return;
     } catch(const std::exception& e) {
         std::cerr << "GameScreen render error: " << e.what() << std::endl;
         throw;
@@ -518,7 +518,7 @@ MenuAction GameScreen::getMenuAction() const {
     }
     
     // Return main menu action after game is over and particles finished
-    if(gameOver && gameOverTime >= 0.7f) {
+    if(gamePhase == GamePhase::GameOver && gameOverTime >= 0.7f) {
         return MenuAction::MAIN_MENU;
     }
     
@@ -529,7 +529,7 @@ void GameScreen::resetMenuAction() {
     menuAction = MenuAction::NONE;
 }
 
-void GameScreen::createExplosion(sf::Vector2f position, sf::Vector2f velocity) {
+void GameScreen::createExplosion(sf::Vector2f position, sf::Vector2f velocity, sf::Color color) {
     const int PARTICLE_COUNT = 18;
     const float PARTICLE_LIFETIME = 0.6f;
     const float PARTICLE_RADIUS = 4.f;
@@ -560,7 +560,8 @@ void GameScreen::createExplosion(sf::Vector2f position, sf::Vector2f velocity) {
             sf::Vector2f(velocityX, velocityY),
             PARTICLE_LIFETIME,
             PARTICLE_LIFETIME,
-            PARTICLE_RADIUS
+            PARTICLE_RADIUS,
+            color  // Use the player's color for particles
         });
     }
 }

@@ -107,6 +107,10 @@ const sf::CircleShape& Player::getShape(){
     return shape;
 }
 
+sf::Color Player::getColor() const {
+    return shape.getFillColor();
+}
+
 bool Player::isAlive() const {
     return alive;
 }

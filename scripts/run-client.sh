@@ -4,7 +4,8 @@
 echo "Starting Sumo Balls Client (Online Mode)..."
 echo ""
 
-cd "$(dirname "$0")"
+# Change to project root
+cd "$(dirname "$0")/.." || exit 1
 
 if [ ! -f "./build/sumo_balls" ]; then
     echo "Error: Client executable not found!"

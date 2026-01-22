@@ -1,4 +1,8 @@
 #!/bin/bash
+# Test script for online multiplayer functionality
+
+# Change to project root
+cd "$(dirname "$0")/.." || exit 1
 
 # Kill any existing processes
 pkill -f sumo_balls_server || true
@@ -11,13 +15,14 @@ SERVER_PID=$!
 sleep 2
 
 echo "Starting client..."
-SUMO_ONLINE=1 SUMO_HOST=127.0.0.1 SUMO_PORT=7777 timeout 10 ./build/sumo_balls 2>&1 | head -100 &
+./build/sumo_balls &
 CLIENT_PID=$!
 
+# Wait a bit for connection
 sleep 5
 
-echo "Killing processes..."
+# Cleanup
+echo "Cleaning up..."
 kill $SERVER_PID $CLIENT_PID 2>/dev/null || true
-wait 2>/dev/null || true
 
-echo "Done"
+echo "Test complete"

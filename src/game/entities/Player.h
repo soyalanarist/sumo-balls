@@ -9,6 +9,7 @@ public:
     void update(float dt, float speedMultiplier = 1.0f);
     void render(sf::RenderWindow& window);
     const sf::CircleShape& getShape();
+    sf::Color getColor() const;
 
     void setMovementDirection(sf::Vector2f direction);
     void resetVelocity();

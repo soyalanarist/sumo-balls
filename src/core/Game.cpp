@@ -2,6 +2,7 @@
 #include "Settings.h"
 #include "../game/controllers/HumanController.h"
 #include "../game/controllers/AIController.h"
+#include "../screens/AuthScreen.h"
 #include "../screens/menus/MainMenu.h"
 #include "../screens/menus/PauseMenu.h"
 #include "../screens/menus/GameOverMenu.h"
@@ -36,24 +37,28 @@ Game::Game() : screens(window, font){
     // Set frame rate limit to 60 FPS for smooth gameplay
     window.setFramerateLimit(60);
 
-    screens.push(std::make_unique<MainMenu>(font));
+    // If not authenticated, show auth screen first
+    if(Settings::authToken.empty()) {
+        screens.push(std::make_unique<AuthScreen>(font));
+    } else {
+        // Already authenticated, go to main menu
+        screens.push(std::make_unique<MainMenu>(font));
+    }
 }
 
 void Game::run() {
     sf::Clock clock;
+    std::cout << "[Game] Starting main loop" << std::endl;
 
+    int frameCount = 0;
     while(window.isOpen()){
+        frameCount++;
         sf::Time deltaTime = clock.restart();
 
-        sf::Event event;
-        while(window.pollEvent(event)){
-            if(event.type == sf::Event::Closed){
-                window.close();
-            }
-        }
-
         try {
+            if(frameCount == 1) std::cout << "[Game] Frame 1: calling screens.update()" << std::endl;
             screens.update(deltaTime);
+            if(frameCount == 1) std::cout << "[Game] Frame 1: screens.update() completed" << std::endl;
         } catch(const std::exception& e) {
             std::cerr << "Game update error: " << e.what() << std::endl;
             window.close();

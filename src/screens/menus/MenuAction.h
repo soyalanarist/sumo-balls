@@ -3,6 +3,7 @@
 enum class MenuAction {
     NONE,
     MAIN_MENU,
+    START_SINGLEPLAYER,
     START_GAME,
     QUIT,
     PAUSE,
@@ -10,5 +11,7 @@ enum class MenuAction {
     RESUME,
     TOGGLE_FULLSCREEN,
     SET_WINDOWED,
-    SET_FULLSCREEN
+    SET_FULLSCREEN,
+    FRIENDS,
+    LOBBIES
 };
