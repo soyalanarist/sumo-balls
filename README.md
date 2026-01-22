@@ -100,7 +100,7 @@ Edit `config.json` in the game directory:
   "playerColorIndex": 5,
   "onlineEnabled": true,
   "onlineHost": "127.0.0.1",    # Server IP address
-  "onlinePort": 7777             # Server port
+  "onlinePort": 7777            # Server port
 }
 ```
 
