@@ -24,43 +24,101 @@ void WelcomeScreen::render() {
     if (targetWidth > 720.0f) targetWidth = 720.0f;
     ImGui::SetNextWindowSize(ImVec2(targetWidth, 0), ImGuiCond_Always);
     
-    ImGui::Begin("Welcome", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("##Welcome", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
     
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImVec2 window_pos = ImGui::GetWindowPos();
+    ImVec2 window_size = ImGui::GetWindowSize();
+    
+    // Decorative top bar
+    ImU32 accent_color = ImGui::GetColorU32(ImVec4(0.26f, 0.59f, 0.98f, 1.0f));
+    draw_list->AddRectFilled(window_pos, ImVec2(window_pos.x + window_size.x, window_pos.y + 4), accent_color);
+    
+    ImGui::Spacing();
+    
+    // Title with accent color
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.26f, 0.59f, 0.98f, 1.0f));
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
-    ImGui::Text("Welcome to Sumo Balls");
+    float title_width = ImGui::CalcTextSize("Welcome to Sumo Balls").x;
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - title_width) / 2);
+    ImGui::TextUnformatted("Welcome to Sumo Balls");
     ImGui::PopFont();
-    ImGui::Separator();
+    ImGui::PopStyleColor();
+    
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("⚔️ Battle Online").x) / 2);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.70f, 0.72f, 0.8f));
+    ImGui::TextUnformatted("⚔️ Battle Online");
+    ImGui::PopStyleColor();
+    
     ImGui::Spacing();
-    ImGui::TextWrapped("Online play is required. Sign in with Google to continue.");
     ImGui::Spacing();
     
+    // Info text with better styling
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.80f, 0.80f, 0.82f, 1.0f));
+    ImGui::TextWrapped("Sign in with Google to continue playing. Your game progress will be saved to the cloud.");
+    ImGui::PopStyleColor();
+    
+    ImGui::Spacing();
+    
+    // Error message
     if (!errorMessage.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-        ImGui::TextWrapped("%s", errorMessage.c_str());
-        ImGui::PopStyleColor();
-        ImGui::Spacing();
-    }
-    if (!statusMessage.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 1.0f, 0.3f, 1.0f));
-        ImGui::TextWrapped("%s", statusMessage.c_str());
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 8.0f));
+        ImGui::TextWrapped("❌ %s", errorMessage.c_str());
+        ImGui::PopStyleVar();
         ImGui::PopStyleColor();
         ImGui::Spacing();
     }
     
-    ImGui::BeginDisabled(isLoading);
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.52f, 0.96f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.62f, 1.0f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.42f, 0.86f, 1.0f));
-    if (ImGui::Button("Sign in with Google", ImVec2(-1, 40))) {
-        attemptGoogleLogin();
+    // Status message
+    if (!statusMessage.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.9f, 0.4f, 1.0f));
+        ImGui::TextWrapped("✓ %s", statusMessage.c_str());
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
     }
-    ImGui::PopStyleColor(3);
+    
+    // Google Sign-In Button with premium styling
+    ImGui::Spacing();
+    ImGui::BeginDisabled(isLoading);
+    
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(16.0f, 14.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.68f, 1.0f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.48f, 0.88f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.95f, 0.97f, 1.0f));
+    
+    if (ImGui::Button("🔓  Sign in with Google", ImVec2(-1, 48))) {
+        if (!isLoading) {
+            attemptGoogleLogin();
+        }
+    }
+    
+    ImGui::PopStyleColor(4);
+    ImGui::PopStyleVar(2);
     ImGui::EndDisabled();
     
+    // Loading animation
     if (isLoading) {
         ImGui::Spacing();
-        ImGui::Text("Processing...");
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.26f, 0.59f, 0.98f, 1.0f));
+        float time = ImGui::GetTime();
+        const char* spinner[] = {"|", "/", "-", "\\"};
+        ImGui::Text("  %s Processing authentication...", spinner[(int)(time * 4) % 4]);
+        ImGui::PopStyleColor();
     }
+    
+    ImGui::Spacing();
+    ImGui::Spacing();
+    
+    // Footer
+    ImGui::Separator();
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.60f, 0.60f, 0.62f, 0.6f));
+    float footer_width = ImGui::CalcTextSize("Secure authentication via Google OAuth 2.0").x;
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - footer_width) / 2);
+    ImGui::TextUnformatted("Secure authentication via Google OAuth 2.0");
+    ImGui::PopStyleColor();
     
     ImGui::End();
 }

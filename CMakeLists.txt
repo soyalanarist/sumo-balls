@@ -79,6 +79,8 @@ add_executable(sumo_balls
 
     src/systems/InputSystem.cpp
     
+    src/ui/UIComponents.cpp
+    
     # ImGui implementation files
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
