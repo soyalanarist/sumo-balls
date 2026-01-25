@@ -1,15 +1,12 @@
+#pragma once
 #include "Menu.h"
-#include "../../ui/Button.h"
 
 class PauseMenu : public Menu {
 public:
-    explicit PauseMenu(sf::Font& f);
+    PauseMenu();
 
-    void update(sf::Time deltaTime, sf::RenderWindow& window) override;
-    void render(sf::RenderWindow& window) override;
+    void update() override;
+    void render() override;
 
-    bool isOverlay() const override { return false; }
-private:
-    std::vector<Button> buttons;
-    sf::RectangleShape mask;
+    bool isOverlay() const override { return true; }
 };

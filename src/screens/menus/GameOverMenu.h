@@ -1,16 +1,13 @@
+#pragma once
 #include "Menu.h"
-#include "../../ui/Button.h"
 
+// Minimal game over menu stub; visuals removed during migration
 class GameOverMenu : public Menu {
 public:
-    explicit GameOverMenu(sf::Font& f);
+    GameOverMenu();
 
-    void update(sf::Time deltaTime, sf::RenderWindow& window) override;
-    void render(sf::RenderWindow& window) override;
+    void update() override;
+    void render() override;
 
     bool isOverlay() const override { return true; }
-
-private:
-    std::vector<Button> buttons;
-    sf::RectangleShape mask;
 };

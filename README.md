@@ -1,230 +1,395 @@
 # Sumo Balls - Multiplayer Arena Game
 
-A fast-paced multiplayer arena game where players try to knock each other out of a shrinking arena.
+A fast-paced multiplayer arena game where players try to knock each other out of a shrinking arena. Built with modern C++20, featuring authoritative server architecture, real-time networking, user authentication, and matchmaking.
 
 ## Features
 
-- **Online Multiplayer**: Authoritative server with client-side prediction
-- **Smooth 60 FPS Gameplay**: Optimized networking with interpolation
-- **Physics-Based Combat**: Momentum-based collisions
-- **Shrinking Arena**: Arena shrinks over time, increasing intensity
-- **Particle Effects**: Explosions and visual feedback
+- **Online Multiplayer**: Authoritative server with client-side prediction and server reconciliation
+- **Smooth 60 FPS Gameplay**: Optimized networking with interpolation and low-latency updates
+- **Physics-Based Combat**: Momentum-based collisions and realistic physics simulation
+- **Shrinking Arena**: Dynamic arena that shrinks over time, intensifying gameplay
+- **Particle Effects**: Visual feedback for explosions and collisions
+- **Account System**: User registration, login, and session management
+- **Friends & Lobbies**: Friend lists, friend requests, and private game lobbies
+- **Matchmaking**: Automatic queue-based match creation via coordinator service
+
+## Quick Start
+
+### Prerequisites
+
+- **C++20** compiler (g++ 10+ or clang++ 12+)
+- **CMake** 3.16 or higher
+- **SDL2** 2.0+ (graphics and windowing)
+- **Go** 1.21+ (for matchmaking coordinator, optional)
+- ENet and ImGui (automatically fetched by CMake)
+
+### Build (Linux/WSL/macOS)
+
+```bash
+# Install dependencies (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install build-essential cmake libsdl2-dev
+
+# Build everything
+mkdir -p build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+
+# Run unit tests (optional)
+./sumo_balls_test
+```
+
+### Run Locally (Offline)
+
+```bash
+cd build
+./sumo_balls
+```
+
+Navigate the menu with your mouse, click "Play" for a local single-player game.
+
+---
 
 ## Building the Game
 
-### Dependencies
+### Supported Platforms
 
-- **C++17** compiler (g++ or clang++)
-- **CMake** 3.10 or higher
-- **SFML** 2.5 or higher (Graphics, Window, System)
-- **ENet** 1.3 (automatically fetched by CMake)
+- **Linux** (Ubuntu 20.04+, Debian 11+, Arch)
+- **macOS** (10.13+)
+- **Windows** (via WSL2 or MSVC with SDL2 port)
 
-### Ubuntu/Debian
+### Install Dependencies
+
+#### Ubuntu/Debian
 
 ```bash
 sudo apt-get update
-sudo apt-get install build-essential cmake libsfml-dev
+sudo apt-get install build-essential cmake libsdl2-dev
 ```
 
-### Arch Linux
+#### Arch Linux
 
 ```bash
-sudo pacman -S base-devel cmake sfml
+sudo pacman -S base-devel cmake sdl2
+```
+
+#### macOS
+
+```bash
+brew install cmake sdl2
 ```
 
 ### Build Instructions
 
 ```bash
-# Clone the repository
+# Clone repository
+git clone <repo>
 cd sumo-balls
 
-# Create build directory and compile
+# Create build directory
 mkdir -p build
 cd build
-cmake ..
+
+# Configure (choose one)
+cmake -DCMAKE_BUILD_TYPE=Debug ..     # Debug with sanitizers
+cmake -DCMAKE_BUILD_TYPE=Release ..   # Optimized release build
+
+# Compile
 make -j$(nproc)
 ```
 
-This creates two executables:
-- `sumo_balls` - The game client
-- `sumo_balls_server` - The dedicated server
+**Output Executables:**
+- `sumo_balls` - Game client
+- `sumo_balls_server` - Dedicated game server
+- `sumo_balls_test` - Unit test suite
 
-## Running the Game
-
-### Starting a Server
+### Running Tests
 
 ```bash
 cd build
-./sumo_balls_server <port>
+./sumo_balls_test
 ```
 
-Example:
-```bash
-./sumo_balls_server 7777
+Example output:
+```
+======================================================================
+Running 5 test(s)
+======================================================================
+
+✓ Physics::FiniteCheck                                         [0.00ms]
+✓ Physics::PositionValidation                                  [0.00ms]
+✓ Physics::VelocityValidation                                  [0.00ms]
+✓ Physics::PositionClamping                                    [0.00ms]
+✓ Physics::VelocityClamping                                    [0.00ms]
+
+======================================================================
+Results: 5 passed, 0 failed
+======================================================================
 ```
 
-The server will:
-- Listen on the specified port (default: 7777)
-- Accept player connections
-- Run authoritative game simulation
-- Broadcast game state at 33 Hz (every 30ms)
-- Handle player collisions and arena boundaries
+---
 
-**Firewall Setup**: Ensure the port is open:
-```bash
-# Ubuntu/Debian with UFW
-sudo ufw allow 7777/udp
+## Running the Game
 
-# Or using iptables
-sudo iptables -A INPUT -p udp --dport 7777 -j ACCEPT
-```
+### Local/Offline Mode
 
-### Running the Client
+Perfect for single-player testing or LAN parties without internet:
 
-#### Local/Offline Mode
 ```bash
 cd build
 ./sumo_balls
 ```
-- Navigate menu with mouse
-- Click "Play" for local game
-- Controls: WASD to move
 
-#### Online Mode
+**Controls:**
+- **WASD** - Movement
+- **Arrow Keys** - Alternative movement
+- **IJKL** - Left-handed mode (enable in settings)
+- **ESC** - Pause/Menu
+- **Mouse** - Menu navigation
 
-Edit `config.json` in the game directory:
+### Online Mode with Full Stack
+
+Requires three services running: Coordinator, Game Server, and Client.
+
+#### Step 1: Start Coordinator (Matchmaking Service)
+
+```bash
+cd coordinator
+go build -o coordinator-bin main.go
+./coordinator-bin
+```
+
+Expected output:
+```
+[Coordinator] Starting on :8888
+[Auth] User database initialized
+```
+
+This provides:
+- User authentication (register/login)
+- Session management
+- Friends system
+- Lobby management
+- Matchmaking queue
+
+#### Step 2: Start Game Server(s)
+
+```bash
+cd build
+./sumo_balls_server 9999
+```
+
+Expected output:
+```
+[Server] Registered with coordinator
+[Server] Listening on port 9999
+[Server] Snapshot rate: 33 Hz (30ms)
+[Server] Simulation tick: 2ms
+```
+
+You can run multiple servers for load balancing.
+
+#### Step 3: Launch Client(s)
+
+```bash
+cd build
+./sumo_balls
+```
+
+Flow:
+1. Click "Login" or "Register" to create account
+2. Upon authentication, click "Matchmaking"
+3. Game automatically finds opponents
+4. Coordinator creates match when sufficient players queued
+5. Client connects to assigned game server
+6. Match begins!
+
+---
+
+## Configuration
+
+### Client Config (`config.json`)
+
+Located in game root directory:
+
 ```json
 {
   "leftyMode": false,
   "fullscreen": false,
   "playerColorIndex": 5,
   "onlineEnabled": true,
-  "onlineHost": "127.0.0.1",    # Server IP address
-  "onlinePort": 7777            # Server port
+  "onlineHost": "localhost",
+  "onlinePort": 9999
 }
 ```
 
-Then launch:
-```bash
-cd build
-SUMO_ONLINE=1 ./sumo_balls
+**Options:**
+- `leftyMode` (bool): Use IJKL instead of WASD
+- `fullscreen` (bool): Run in fullscreen mode
+- `playerColorIndex` (int): Player color (0-7)
+- `onlineEnabled` (bool): Enable online features
+- `onlineHost` (string): Coordinator/server IP address
+- `onlinePort` (int): Server port
+
+### Server Configuration
+
+Edit constants in `src/server_main.cpp`:
+
+```cpp
+const float snapshotInterval = 0.03f;  // 30ms between state broadcasts
+const int   simulationTickMs = 2;      // 2ms per physics simulation step
+const int   maxPlayersPerServer = 6;   // Maximum concurrent players
 ```
 
-Or click "Play Online" from the main menu.
+### Authentication
 
-### Controls
+The game supports three authentication methods:
 
-- **WASD**: Movement (default)
-- **Arrow Keys**: Alternative movement controls
-- **IJKL**: Left-handed mode (enable in settings)
-- **ESC**: Pause/Menu
+#### 1. Username/Password (Default)
 
-## Network Configuration
+No configuration needed. Works offline if coordinator unavailable.
 
-### Server Requirements
+#### 2. Google OAuth (Requires Setup)
 
-- **Bandwidth**: ~10 KB/s per player (upstream)
-- **Tick Rate**: 500 Hz (2ms simulation step)
-- **Snapshot Rate**: 33 Hz (30ms between broadcasts)
-- **Protocol**: UDP via ENet
+Allows users to sign in with their Google account. Requires credentials from Google Cloud Console.
 
-### Client Requirements
+**Quick Setup (WSL + Windows 11):**
 
-- **Bandwidth**: ~5 KB/s (downstream)
-- **Latency**: Best with <100ms RTT
-- **Frame Rate**: Capped at 60 FPS
+```bash
+# 1. Set up OAuth credentials
+bash scripts/setup-oauth.sh
 
-### Port Forwarding
+# 2. Start coordinator (loads credentials)
+cd coordinator && ./run.sh
+
+# 3. Run game client
+cd build && ./sumo_balls
+
+# Click "Sign in with Google" - browser opens automatically via wslview
+```
+
+**Full Documentation:**
+- [Google OAuth Setup Guide](docs/GOOGLE_OAUTH_SETUP.md) - Detailed steps with Google Cloud Console instructions
+- [WSL Browser Guide](docs/WSL_BROWSER_GUIDE.md) - Troubleshooting for WSL → Windows browser opening
+
+**WSL Automatic Browser Opening:**
+
+When you click "Sign in with Google" on WSL, the game automatically:
+1. Detects WSL environment
+2. Uses `wslview` to open browser in Windows
+3. Handles OAuth redirect back to localhost:8888
+4. Polls for completion (30 second timeout)
+5. Logs you in automatically
+
+No manual browser URL copying needed!
+
+**Environment Variables:**
+
+```bash
+export GOOGLE_CLIENT_ID="your_client_id_from_google_cloud"
+export GOOGLE_CLIENT_SECRET="your_client_secret_from_google_cloud"
+./coordinator-bin
+```
+
+The coordinator also manages:
+- SQLite user database (auto-created)
+- Session tokens with 7-day expiry
+- Secure password hashing (bcrypt)
+
+---
+
+## Network Architecture
+
+### Protocol & Requirements
+
+| Aspect | Details |
+|--------|---------|
+| Protocol | UDP via ENet (reliable delivery) |
+| Server Tick | 500 Hz (2ms per step) |
+| Snapshot Rate | 33 Hz (30ms broadcast interval) |
+| Server Bandwidth | ~10 KB/s per player (upstream) |
+| Client Bandwidth | ~5 KB/s (downstream) |
+| Optimal Latency | <100ms RTT |
+| Max Playable | <150ms RTT |
+
+### Server Architecture
+
+- **Authoritative**: Server is single source of truth
+- **Deterministic**: Same inputs produce same outputs
+- **Stateless players**: Server doesn't care about client state
+- **Snapshots**: Periodic full-state broadcasts every 30ms
+
+### Client Architecture
+
+- **Prediction**: Client predicts own movement before server confirmation
+- **Interpolation**: Smoothly interpolates between received snapshots
+- **Reconciliation**: Corrects deviations when server state differs
+- **Input buffering**: Handles 50-100ms RTT transparently
+
+### Port Forwarding (For Internet Play)
 
 If hosting from home network, forward UDP port on your router:
+
 1. Access router admin panel (usually 192.168.1.1)
-2. Find "Port Forwarding" or "Virtual Servers"
-3. Add rule: External Port 7777 UDP → Internal IP:7777
+2. Find "Port Forwarding" or "UPnP" settings
+3. Add rule: `External UDP Port 9999 → Internal IP:9999`
+4. Share your public IP with players
 
-### Finding Your Server IP
-
-**Local Network**:
-```bash
-ip addr show | grep "inet "
-```
-
-**Public IP** (for internet play):
+Find your public IP:
 ```bash
 curl ifconfig.me
 ```
 
-## Configuration Files
+---
 
-### config.json
+## Deployment
 
-Located in the game root directory:
-- `leftyMode`: Use IJKL instead of WASD
-- `fullscreen`: Fullscreen mode
-- `playerColorIndex`: Your player color (0-7)
-- `onlineEnabled`: Enable online features
-- `onlineHost`: Server IP address
-- `onlinePort`: Server port
-
-### Server Configuration
-
-Edit `src/server_main.cpp` before building to adjust:
-- `snapshotTimer`: Snapshot broadcast interval (default: 0.03f = 30ms)
-- `sleep`: Server tick sleep time (default: 2ms)
-
-## Deployment Options
-
-### Local Network (LAN Party)
-
-1. One player runs server:
-   ```bash
-   ./sumo_balls_server 7777
-   ```
-
-2. Get server's local IP:
-   ```bash
-   hostname -I
-   ```
-
-3. Other players edit their `config.json`:
-   ```json
-   "onlineHost": "192.168.x.x"  # Server's IP
-   ```
-
-4. All players launch:
-   ```bash
-   SUMO_ONLINE=1 ./sumo_balls
-   ```
-
-### Internet Play
-
-1. **Server Host**:
-   - Run server on machine with public IP or port forwarding
-   - Share public IP with players
-   
-2. **Players**:
-   - Update `config.json` with server's public IP
-   - Launch with `SUMO_ONLINE=1`
-
-### Cloud Deployment (VPS/Dedicated Server)
+### Local Network (LAN)
 
 ```bash
-# On server (e.g., AWS, DigitalOcean, Linode)
-apt-get update
-apt-get install build-essential cmake libsfml-dev
+# Terminal 1: Coordinator
+cd coordinator && ./coordinator-bin
 
-# Build
+# Terminal 2: Server
+cd build && ./sumo_balls_server 9999
+
+# Terminal 3+: Clients
+cd build && ./sumo_balls
+```
+
+### Internet Play (Single Server)
+
+```bash
+# On server machine with public IP or port forwarding:
+cd coordinator && ./coordinator-bin
+
+# In separate terminal:
+cd build && ./sumo_balls_server 9999
+
+# Clients update config.json:
+# "onlineHost": "your.public.ip"
+```
+
+### Cloud Deployment (VPS/AWS/DigitalOcean)
+
+```bash
+# SSH into Ubuntu VPS
+ssh user@your-vps-ip
+
+# Install dependencies
+sudo apt-get update
+sudo apt-get install build-essential cmake libsdl2-dev golang-go
+
+# Clone and build
 git clone <repo>
 cd sumo-balls
 mkdir build && cd build
-cmake ..
-make sumo_balls_server
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j4
 
-# Run with systemd (optional)
-# Create /etc/systemd/system/sumo-balls.service
-```
-
-Example systemd service:
-```ini
+# Create systemd service for game server
+sudo tee /etc/systemd/system/sumo-balls.service > /dev/null << EOF
 [Unit]
 Description=Sumo Balls Game Server
 After=network.target
@@ -233,52 +398,304 @@ After=network.target
 Type=simple
 User=gameserver
 WorkingDirectory=/opt/sumo-balls/build
-ExecStart=/opt/sumo-balls/build/sumo_balls_server 7777
-Restart=always
+ExecStart=/opt/sumo-balls/build/sumo_balls_server 9999
+Restart=on-failure
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+# Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable sumo-balls
+sudo systemctl start sumo-balls
+
+# View logs
+sudo journalctl -u sumo-balls -f
 ```
+
+---
+
+## Project Architecture
+
+### Directory Structure
+
+```
+sumo-balls/
+├── src/
+│   ├── main.cpp              # Client entry point
+│   ├── server_main.cpp       # Server entry point
+│   ├── core/                 # Engine (graphics, screens, ImGui)
+│   │   ├── Game.h/cpp        # Main game loop
+│   │   ├── GraphicsContext   # SDL2 wrapper
+│   │   ├── ImGuiManager      # ImGui initialization
+│   │   ├── ScreenStack       # Menu navigation
+│   │   └── Settings          # Config management
+│   ├── game/                 # Game logic
+│   │   ├── entities/         # Players, arena, effects
+│   │   ├── PhysicsValidator  # Physics safety checks
+│   │   └── controllers/      # Input handling (human, AI, network)
+│   ├── network/              # Networking
+│   │   ├── NetClient         # ENet client wrapper
+│   │   ├── NetServer         # ENet server wrapper
+│   │   ├── NetProtocol       # Message serialization
+│   │   ├── HttpClient        # Coordinator API calls
+│   │   └── GameNetworkManager# Connection lifecycle
+│   ├── screens/              # UI/Game screens
+│   │   ├── AuthScreen        # Login/Register UI
+│   │   ├── GameScreen        # Main gameplay
+│   │   ├── FriendsScreen     # Friends list
+│   │   ├── LobbyScreen       # Lobby UI
+│   │   └── menus/            # Main menu, pause, game-over
+│   ├── simulation/           # Physics engine
+│   │   └── Simulation        # Collision, movement, arena shrink
+│   ├── systems/              # Game systems
+│   │   └── InputSystem       # Keyboard input polling
+│   └── utils/                # Utilities
+│       ├── VectorMath        # Vector2 implementation
+│       ├── GameConstants     # Shared constants
+│       ├── SimpleJson        # JSON parsing
+│       └── Logger            # Logging system
+├── coordinator/              # Go matchmaking service
+│   ├── main.go               # Server, queue, matchmaking
+│   ├── auth.go               # User auth, sessions
+│   ├── database.go           # SQLite operations
+│   ├── friends.go            # Friend requests/list
+│   ├── lobby.go              # Lobby management
+│   └── types.go              # API request/response types
+├── tests/                    # Unit tests
+│   ├── TestFramework.h       # Simple test macro system
+│   ├── TestRunner.cpp        # Test main()
+│   └── test_physics.cpp      # Physics validation tests
+├── CMakeLists.txt            # C++ build configuration
+├── .clang-format             # Code style configuration
+├── config.json               # Default client config
+└── README.md                 # This file
+```
+
+### Design Patterns
+
+**Architectural Patterns:**
+- **Client-Server**: Centralized authority
+- **Screen Stack**: Menu navigation via push/pop
+- **Event-Driven**: Network events trigger state changes
+- **Manager Pattern**: Singleton managers for graphics, audio, network
+
+**Code Patterns:**
+- **RAII**: Resource management (smart pointers, destructors)
+- **Observer**: UI updates from game state changes
+- **Strategy**: Different controllers (human, AI, network)
+- **Factory**: Entity creation with appropriate components
+
+### Technologies & Libraries
+
+| Component | Library | Purpose |
+|-----------|---------|---------|
+| Graphics | SDL2 | Cross-platform windowing, rendering |
+| UI | ImGui | Immediate-mode GUI for menus |
+| Networking | ENet | Reliable UDP with flow control |
+| Physics | Custom | Collision detection, impulse resolution |
+| Math | GLM-inspired | Vector math utilities |
+| Serialization | SimpleJson | Lightweight JSON for coordinator API |
+| Backend | Go + SQLite | Matchmaking, auth, friends, lobbies |
+
+---
+
+## Development
+
+### Code Standards
+
+**Language**: C++20
+
+**Style**: 
+- Run `clang-format` on all files
+- Config: `.clang-format` file included
+
+**Naming**:
+- `snake_case` for functions and variables
+- `PascalCase` for classes and types
+- `UPPER_CASE` for constants
+
+**Error Handling**:
+- Exceptions for fatal/unrecoverable errors
+- Logging for diagnostics and debugging
+- PhysicsValidator for sanity checks
+
+**Comments**:
+- Document public APIs with intention
+- Explain "why", not "what"
+- Use modern C++ constructs, not C-style comments
+
+### Building with Format Check
+
+```bash
+# Auto-format all source files
+clang-format -i src/**/*.cpp include/**/*.h
+
+# Or integrate with editor (VS Code config provided)
+```
+
+### Debug vs Release Builds
+
+**Debug Build** (`-DCMAKE_BUILD_TYPE=Debug`)
+- Address Sanitizer enabled (detects memory errors)
+- Undefined Behavior Sanitizer enabled
+- Debug symbols for debugging
+- Slower execution but catches errors
+
+**Release Build** (`-DCMAKE_BUILD_TYPE=Release`)
+- `-O3` optimizations enabled
+- `-march=native` for CPU-specific optimizations
+- No sanitizers (production-safe)
+- ~2-3x faster execution
+
+### Running with Sanitizers
+
+```bash
+# Build in Debug mode
+cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
+
+# Run normally - sanitizers run automatically
+./sumo_balls
+
+# Output shows errors like:
+# ==12345==ERROR: AddressSanitizer: heap-buffer-overflow
+# ==12345==The signal is caused by READ memory access
+# ==12345==Hint: address points to the heap block at ...
+```
+
+### Writing Tests
+
+Add test functions to `tests/test_*.cpp`:
+
+```cpp
+#include "TestFramework.h"
+#include "../src/mymodule.h"
+
+bool testMyFeature(std::string& errorMsg) {
+    // Arrange - set up test data
+    int expected = 42;
+    
+    // Act - perform the operation
+    int actual = myFunction(100);
+    
+    // Assert - verify result
+    TEST_EQUAL(expected, actual, "Function should return 42");
+    return true;
+}
+
+// Register test
+namespace {
+    struct MyTestSuite {
+        MyTestSuite() {
+            test::TestSuite::instance().registerTest(
+                "MyModule::TestFeature", 
+                testMyFeature
+            );
+        }
+    } myTests;
+}
+```
+
+Build and run:
+```bash
+cd build && make && ./sumo_balls_test
+```
+
+---
 
 ## Troubleshooting
 
-### Players Not Visible
-- Ensure server is running and accessible
-- Check firewall rules allow UDP traffic
-- Verify `config.json` has correct server IP/port
+### Build Issues
 
-### Lag/High Latency
-- Check RTT display in-game (top-left corner)
-- Reduce network distance to server
-- Ensure server has adequate CPU/bandwidth
-
-### Build Errors
+**"SDL2 not found"**
 ```bash
-# Missing SFML
-sudo apt-get install libsfml-dev
-
-# CMake too old
-# Download newer CMake from cmake.org
+sudo apt-get install libsdl2-dev
 ```
 
-### Connection Refused
-- Verify server is running: `netstat -ulnp | grep 7777`
-- Check firewall: `sudo ufw status`
-- Ensure port forwarding is configured
+**"CMake version too old"**
+```bash
+pip install --upgrade cmake
+# Or download from cmake.org
+```
 
-## Architecture
+**"Permission denied" on scripts**
+```bash
+chmod +x scripts/*.sh
+```
 
-- **Client-Server Model**: Authoritative server, client-side prediction
-- **Networking**: ENet reliable UDP
-- **Physics**: Custom collision detection and momentum system
-- **Rendering**: SFML with 60 FPS frame limiting
-- **Interpolation**: Smoothstep interpolation with 0ms delay for responsive gameplay
+### Runtime Issues
+
+**"Connection refused" / Cannot connect**
+```bash
+# Verify coordinator running
+lsof -i :8888
+
+# Verify server running
+lsof -i :9999
+
+# Check firewall
+sudo ufw status
+sudo ufw allow 8888/tcp
+sudo ufw allow 9999/udp
+```
+
+**"Players not visible" / Connection drops**
+- Both clients must connect to same game server
+- Check RTT display in-game (should be <150ms)
+- Verify packet loss: `ping -c 10 server-ip`
+
+**"High CPU usage"**
+- Check if using Release build (`-DCMAKE_BUILD_TYPE=Release`)
+- Profile with: `perf record -g ./sumo_balls && perf report`
+- Reduce snapshot rate if CPU-bound on server
+
+**Sanitizer reports issues**
+```
+==123==ERROR: AddressSanitizer: use-after-free
+```
+
+This indicates a real bug. Check the stack trace:
+- Shows exact function and line where error occurs
+- Trace back to find where object was freed prematurely
+
+---
 
 ## Performance
 
-- **Server**: ~1-2% CPU per player on modern hardware
-- **Client**: ~5-10% CPU, integrated graphics sufficient
-- **Memory**: <50 MB per client/server instance
+### Typical Metrics
+
+| Metric | Value |
+|--------|-------|
+| Server CPU per player | 1-2% |
+| Client CPU | 5-10% |
+| Client Memory | <50 MB |
+| Server Memory | <100 MB |
+| Network (server) | 10 KB/s |
+| Network (client) | 5 KB/s |
+| Latency tolerance | <150ms RTT |
+| Frame time | 16.7ms @ 60 FPS |
+
+### Optimization Tips
+
+- **Server**: Reduce `snapshotInterval` for lower latency (higher bandwidth)
+- **Client**: Increase interpolation smoothness by reducing `frameTime`
+- **Network**: Compress physics state if bandwidth-limited
+- **Physics**: Cache collision shapes, use spatial partitioning
+
+---
+
+## Contributing
+
+1. **Code Style**: Run `clang-format` on modified files
+2. **Testing**: Add tests for new features, run `sumo_balls_test`
+3. **Documentation**: Update README and inline comments
+4. **Commits**: Clear messages explaining "why"
+5. **Pull Requests**: Include test results and performance impact
+
+---
 
 ## License
 
@@ -287,3 +704,15 @@ sudo apt-get install libsfml-dev
 ## Credits
 
 [Add credits here]
+
+## Additional Resources
+
+For more details:
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Deep dive into system design
+- [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) - Development status
+- [COORDINATOR_INTEGRATION.md](docs/COORDINATOR_INTEGRATION.md) - Matchmaking API
+
+---
+
+**Last Updated**: January 2026  
+**Version**: 0.1.0 (Alpha)

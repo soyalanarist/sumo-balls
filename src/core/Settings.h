@@ -29,18 +29,6 @@ struct Settings {
         syncFromManager();
     }
     
-    static sf::Color getPlayerColor() {
-        return SettingsManager::instance().getPlayerColor();
-    }
-    
-    static const char* getColorName(int index) {
-        return SettingsManager::instance().getColorName(index);
-    }
-    
-    static int getColorCount() {
-        return SettingsManager::instance().getColorCount();
-    }
-    
     static void loadSettings() {
         SettingsManager::instance().load();
         syncFromManager();

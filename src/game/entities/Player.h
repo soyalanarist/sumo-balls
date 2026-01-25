@@ -1,6 +1,8 @@
 #pragma once
-#include <SFML/Graphics.hpp>
 #include <cmath>
+
+// Legacy SFML player - orphaned during SDL/ImGui migration
+// File kept for reference but not built
 
 class Player {
 public:

@@ -1,5 +1,5 @@
 #pragma once
-#include <SFML/Graphics.hpp>
+#include "../utils/VectorMath.h"
 #include <cmath>
 #include <iostream>
 #include <cassert>
@@ -23,21 +23,21 @@ inline bool isFinite(float value) {
 }
 
 /// Check if a position is within reasonable bounds
-inline bool isPositionValid(const sf::Vector2f& pos) {
+inline bool isPositionValid(const Vec2& pos) {
     return isFinite(pos.x) && isFinite(pos.y) &&
            pos.x > MIN_WORLD_COORD && pos.x < MAX_WORLD_COORD &&
            pos.y > MIN_WORLD_COORD && pos.y < MAX_WORLD_COORD;
 }
 
 /// Check if a velocity is within reasonable bounds
-inline bool isVelocityValid(const sf::Vector2f& vel) {
+inline bool isVelocityValid(const Vec2& vel) {
     if (!isFinite(vel.x) || !isFinite(vel.y)) return false;
     float magnitude = std::sqrt(vel.x * vel.x + vel.y * vel.y);
     return magnitude < MAX_VELOCITY;
 }
 
 /// Assert position is valid (debug builds only)
-inline void assertPositionValid(const sf::Vector2f& pos, const char* context = "") {
+inline void assertPositionValid(const Vec2& pos, const char* context = "") {
     if (!isPositionValid(pos)) {
         std::cerr << "[Physics Error] Invalid position at " << context 
                   << ": (" << pos.x << ", " << pos.y << ")" << std::endl;
@@ -46,7 +46,7 @@ inline void assertPositionValid(const sf::Vector2f& pos, const char* context = "
 }
 
 /// Assert velocity is valid (debug builds only)
-inline void assertVelocityValid(const sf::Vector2f& vel, const char* context = "") {
+inline void assertVelocityValid(const Vec2& vel, const char* context = "") {
     if (!isVelocityValid(vel)) {
         std::cerr << "[Physics Error] Invalid velocity at " << context
                   << ": (" << vel.x << ", " << vel.y << ")" << std::endl;
@@ -56,13 +56,13 @@ inline void assertVelocityValid(const sf::Vector2f& vel, const char* context = "
 
 /// Validate and clamp position to safe bounds
 /// Returns true if clamping was needed
-inline bool validateAndClampPosition(sf::Vector2f& pos) {
+inline bool validateAndClampPosition(Vec2& pos) {
     bool clamped = false;
     
     // Check for NaN/Inf - replace with origin
     if (!isFinite(pos.x) || !isFinite(pos.y)) {
         std::cerr << "[Physics Warning] NaN/Inf position detected, resetting to origin" << std::endl;
-        pos = sf::Vector2f(600.f, 450.f);  // Game center
+        pos = Vec2(600.f, 450.f);  // Game center
         return true;
     }
     
@@ -77,13 +77,13 @@ inline bool validateAndClampPosition(sf::Vector2f& pos) {
 
 /// Validate and clamp velocity to safe bounds
 /// Returns true if clamping was needed
-inline bool validateAndClampVelocity(sf::Vector2f& vel) {
+inline bool validateAndClampVelocity(Vec2& vel) {
     bool clamped = false;
     
     // Check for NaN/Inf - reset to zero
     if (!isFinite(vel.x) || !isFinite(vel.y)) {
         std::cerr << "[Physics Warning] NaN/Inf velocity detected, resetting to zero" << std::endl;
-        vel = sf::Vector2f(0.f, 0.f);
+        vel = Vec2(0.f, 0.f);
         return true;
     }
     

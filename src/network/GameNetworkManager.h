@@ -1,29 +1,28 @@
 #pragma once
 #include "NetClient.h"
-#include "NetProtocol.h"
-#include "../game/entities/Player.h"
+#include "NetServer.h"
 #include "../game/controllers/HumanController.h"
-#include <SFML/Graphics.hpp>
-#include <unordered_map>
-#include <deque>
-#include <cstdint>
 
-/// Manages all network communication for a game session
-/// Handles connection, input sending, snapshot receiving, and interpolation
 class GameNetworkManager {
 public:
     GameNetworkManager();
-    ~GameNetworkManager() = default;
+    ~GameNetworkManager();
 
-    // Configuration
-    void initFromEnvironment();
-    void connect(const std::string& host, std::uint16_t port);
-    void disconnect();
-    
-    // State
-    bool isConnected() const { return netConnected; }
-    bool isJoined() const { return netJoined; }
-    std::uint32_t getPlayerId() const { return netPlayerId; }
+    bool hostGame();
+    bool joinGame(const std::string& address, uint16_t port);
+
+    void update(float dt);
+    void sendInput(const HumanController& controller, float dt);
+
+    bool isHosting() const { return hosting; }
+    bool isConnected() const { return connected; }
+
+private:
+    NetServer server;
+    NetClient client;
+    bool hosting = false;
+    bool connected = false;
+};
     float getRtt() const { return rttMs; }
     
     // Network operations

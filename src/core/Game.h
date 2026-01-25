@@ -1,4 +1,9 @@
+#pragma once
+
 #include "ScreenStack.h"
+#include "GraphicsContext.h"
+#include "ImGuiManager.h"
+#include <memory>
 
 enum class GameState {
     MENU,
@@ -11,8 +16,8 @@ public:
     void run();
 
 private:
-    sf::RenderWindow window;
-    sf::Font font;
+    std::unique_ptr<GraphicsContext> gfx;
+    std::unique_ptr<ImGuiManager> imgui;
     ScreenStack screens;
     // GameState state;
 };

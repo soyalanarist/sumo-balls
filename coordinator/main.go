@@ -526,6 +526,11 @@ func main() {
 	http.HandleFunc("/auth/logout", authService.handleLogout)
 	http.HandleFunc("/auth/me", authService.authMiddleware(authService.handleMe))
 
+	// Google OAuth endpoints
+	http.HandleFunc("/auth/google/init", authService.handleGoogleInit)
+	http.HandleFunc("/auth/google/callback", authService.handleGoogleCallback)
+	http.HandleFunc("/auth/google/status", authService.handleGoogleStatus)
+
 	// Friend endpoints (require authentication)
 	http.HandleFunc("/friends/send", authService.authMiddleware(friendsService.handleSendRequest))
 	http.HandleFunc("/friends/accept", authService.authMiddleware(friendsService.handleAcceptRequest))

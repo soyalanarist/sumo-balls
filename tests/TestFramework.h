@@ -98,18 +98,12 @@ private:
 #define TEST_TRUE(condition) TEST_ASSERT(condition, #condition " is not true")
 #define TEST_FALSE(condition) TEST_ASSERT(!(condition), #condition " is not false")
 
-/// Register a test with the suite
-#define TEST(suiteName, testName) \
-    bool test_##suiteName##_##testName(std::string& errorMsg); \
-    namespace { \
-        struct Register_##suiteName##_##testName { \
-            Register_##suiteName##_##testName() { \
-                test::TestSuite::instance().registerTest( \
-                    #suiteName "." #testName, \
-                    test_##suiteName##_##testName \
-                ); \
-            } \
-        }; \
-        static Register_##suiteName##_##testName reg_##suiteName##_##testName; \
-    } \
-    bool test_##suiteName##_##testName(std::string& errorMsg)
+/// TEST macro - simple approach using lambda registration
+#define TEST(Suite, TestName) \
+    static struct TestRegister_##Suite##_##TestName { \
+        TestRegister_##Suite##_##TestName(); \
+    } register_##Suite##_##TestName; \
+    TestRegister_##Suite##_##TestName::TestRegister_##Suite##_##TestName()
+
+#define TEST_IMPL(Suite, TestName) \
+    bool test_impl_##Suite##_##TestName(std::string& errorMsg)

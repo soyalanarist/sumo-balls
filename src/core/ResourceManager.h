@@ -1,9 +1,11 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
 #include <memory>
 #include <stdexcept>
 #include <string>
+
+// Legacy SFML resource manager - orphaned during SDL/ImGui migration
+// File kept for reference but not built
 
 /// Enterprise-grade resource manager with shared ownership semantics
 /// Manages lifetime of window, fonts, and other shared game resources

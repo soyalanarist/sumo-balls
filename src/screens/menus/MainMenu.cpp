@@ -1,49 +1,53 @@
 #include "MainMenu.h"
-#include <cstdlib>
-#include <iostream>
+#include <imgui.h>
 
-MainMenu::MainMenu(sf::Font& f){
-    buttons.emplace_back(f, "Singleplayer", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 150.f));
-    buttons.emplace_back(f, "Multiplayer", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 240.f));
-    buttons.emplace_back(f, "Friends", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 330.f));
-    buttons.emplace_back(f, "Lobbies", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 420.f));
-    buttons.emplace_back(f, "Options", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 510.f));
-    buttons.emplace_back(f, "Quit", sf::Vector2f(300.f, 70.f), sf::Vector2f(450.f, 600.f));
+MainMenu::MainMenu() {}
+
+void MainMenu::update() {
+    // ImGui handles all UI updates automatically
+}
+
+void MainMenu::render() {
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+    ImGui::Begin("MainMenu", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
     
-    // Auto-start game if running in online test mode
-    if (std::getenv("SUMO_ONLINE")) {
-        action = MenuAction::START_GAME;
+    // Title
+    ImGui::SetCursorPosY(40);
+    float textWidth = ImGui::CalcTextSize("Sumo Balls").x;
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - textWidth) * 0.5f);
+    ImGui::Text("Sumo Balls");
+    
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 300) * 0.5f);
+    ImGui::SetCursorPosY(150);
+    
+    if (ImGui::Button("Singleplayer", ImVec2(300, 70))) {
+        action = MenuAction::START_SINGLEPLAYER;
     }
-}
-
-void MainMenu::update(sf::Time /*deltaTime*/, sf::RenderWindow& window){
-    for(auto& button : buttons){
-        button.update(window);
-    }
-
-    if(buttons[0].wasClicked()){
-        action = MenuAction::START_SINGLEPLAYER;  // Singleplayer
-        buttons[0].reset();
-    }else if(buttons[1].wasClicked()){
-        action = MenuAction::LOBBIES;  // Multiplayer
-        buttons[1].reset();
-    }else if(buttons[2].wasClicked()){
-        action = MenuAction::FRIENDS;
-        buttons[2].reset();
-    }else if(buttons[3].wasClicked()){
+    
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 300) * 0.5f);
+    ImGui::SetCursorPosY(240);
+    if (ImGui::Button("Multiplayer", ImVec2(300, 70))) {
         action = MenuAction::LOBBIES;
-        buttons[3].reset();
-    }else if(buttons[4].wasClicked()){
+    }
+    
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 300) * 0.5f);
+    ImGui::SetCursorPosY(330);
+    if (ImGui::Button("Friends", ImVec2(300, 70))) {
+        action = MenuAction::FRIENDS;
+    }
+    
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 300) * 0.5f);
+    ImGui::SetCursorPosY(420);
+    if (ImGui::Button("Options", ImVec2(300, 70))) {
         action = MenuAction::OPTIONS;
-        buttons[4].reset();
-    }else if(buttons[5].wasClicked()){
+    }
+    
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 300) * 0.5f);
+    ImGui::SetCursorPosY(510);
+    if (ImGui::Button("Quit", ImVec2(300, 70))) {
         action = MenuAction::QUIT;
-        buttons[5].reset();
     }
-}
-
-void MainMenu::render(sf::RenderWindow& window){
-    for(auto& button : buttons){
-        button.render(window);
-    }
+    
+    ImGui::End();
 }

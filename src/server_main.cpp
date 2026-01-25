@@ -2,8 +2,7 @@
 #include "network/NetProtocol.h"
 #include "simulation/Simulation.h"
 
-#include <SFML/System/Clock.hpp>
-#include <SFML/System/Vector2.hpp>
+#include "utils/VectorMath.h"
 #include <iostream>
 #include <unordered_map>
 #include <thread>
@@ -31,12 +30,12 @@ int main(int argc, char** argv) {
     std::unordered_map<ENetPeer*, ClientInfo> peers;
     std::uint32_t nextPlayerId = 1;
 
-    sf::Clock clock;
+    auto startTime = std::chrono::steady_clock::now();
+    auto last = startTime;
     float accumulator = 0.f;
     const float fixedDt = 1.f / 60.f;
     float snapshotTimer = 0.f;
     std::uint32_t tick = 0;
-    auto startTime = std::chrono::steady_clock::now();
 
     auto onConnect = [&](ENetPeer* peer) {
         std::uint32_t id = nextPlayerId++;
@@ -44,7 +43,7 @@ int main(int argc, char** argv) {
 
         // Spawn players in a ring
         const float angle = static_cast<float>(id % 6) / 6.f * 6.2831853f;
-        sf::Vector2f spawn(600.f + 200.f * std::cos(angle), 450.f + 200.f * std::sin(angle));
+        Vec2 spawn(600.f + 200.f * std::cos(angle), 450.f + 200.f * std::sin(angle));
         sim.addPlayer(id, spawn);
 
         net::JoinAccept msg{ id };
@@ -90,7 +89,9 @@ int main(int argc, char** argv) {
     while (true) {
         server.service(0, onConnect, onDisconnect, onPacket);
 
-        float dt = clock.restart().asSeconds();
+        auto now = std::chrono::steady_clock::now();
+        float dt = std::chrono::duration_cast<std::chrono::duration<float>>(now - last).count();
+        last = now;
         accumulator += dt;
         while (accumulator >= fixedDt) {
             sim.tick(fixedDt);

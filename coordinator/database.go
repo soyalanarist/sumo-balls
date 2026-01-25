@@ -105,6 +105,22 @@ func (d *Database) GetUserByUsername(username string) (*User, error) {
 	return &user, nil
 }
 
+func (d *Database) GetUserByEmail(email string) (*User, error) {
+	var user User
+	err := d.db.QueryRow(
+		"SELECT id, username, password_hash, email, created_at FROM users WHERE email = ?",
+		email,
+	).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Email, &user.CreatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (d *Database) GetUserByID(userID int64) (*User, error) {
 	var user User
 	err := d.db.QueryRow(

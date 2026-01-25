@@ -1,3 +1,4 @@
+// Clean rewrite to remove stray lines
 #include "ScreenStack.h"
 #include "Settings.h"
 #include "../screens/menus/MainMenu.h"
@@ -7,132 +8,95 @@
 #include "../screens/GameScreen.h"
 #include "../screens/FriendsScreen.h"
 #include "../screens/LobbyScreen.h"
-#include <SFML/Graphics.hpp>
 #include <iostream>
 
-ScreenStack::ScreenStack(sf::RenderWindow& w, sf::Font& f)
-    : window(w), font(f){}
+ScreenStack::ScreenStack(void*, void*) {}
 
 void ScreenStack::push(std::unique_ptr<Screen> screen) {
     screens.push_back(std::move(screen));
 }
 
-void ScreenStack::pop(){
-    if(!screens.empty()){
+void ScreenStack::pop() {
+    if (!screens.empty()) {
         screens.pop_back();
     }
 }
 
-void ScreenStack::clear(){
-    while(!screens.empty()){
+void ScreenStack::clear() {
+    while (!screens.empty()) {
         screens.pop_back();
     }
 }
 
-void ScreenStack::update(sf::Time deltaTime) {
-    if (screens.empty()) {
-        return;
+void ScreenStack::update() {
+    if (screens.empty()) return;
+
+    for (int i = static_cast<int>(screens.size()) - 1; i >= 0; --i) {
+        screens[i]->update();
+        if (!screens[i]->isOverlay()) break;
     }
 
-    // Update from top until blocked
-    for(int i = static_cast<int>(screens.size()) - 1; i >= 0; i--){
-        screens[i]->update(deltaTime, window);
-        if(!screens[i]->isOverlay()){
-            break;
-        }
-    }
-
-    // Handle menu actions from the top screen using virtual interface
     MenuAction action = screens.back()->getMenuAction();
-    
-    if(action != MenuAction::NONE) {
-        std::cout << "[ScreenStack] Menu action triggered: " << (int)action << std::endl;
-        switch(action){
-            case MenuAction::START_SINGLEPLAYER:
-                std::cout << "[ScreenStack] Creating GameScreen (offline single-player)..." << std::endl;
-                pop();
-                push(std::make_unique<GameScreen>(true));
-                std::cout << "[ScreenStack] GameScreen created (offline)" << std::endl;
-                break;
-            case MenuAction::START_GAME:
-                std::cout << "[ScreenStack] Creating GameScreen..." << std::endl;
-                pop();
-                push(std::make_unique<GameScreen>());
-                std::cout << "[ScreenStack] GameScreen created" << std::endl;
-                break;
-            case MenuAction::OPTIONS: {
-                // Check if we're in a game (overlay) or in menu
-                bool isGameOverlay = screens.back()->isOverlay();
-                push(std::make_unique<OptionsMenu>(font, isGameOverlay));
-                break;
-            }
-            case MenuAction::QUIT:
-                window.close();
-                break;
-            case MenuAction::MAIN_MENU:
-                while(screens.size() > 1) pop();
-                pop();
-                push(std::make_unique<MainMenu>(font));
-                break;
-            case MenuAction::RESUME:
-                pop();  // Remove pause menu
-                break;
-            case MenuAction::PAUSE:
-                push(std::make_unique<PauseMenu>(font));
-                break;
-            case MenuAction::FRIENDS:
-                push(std::make_unique<FriendsScreen>(font));
-                break;
-            case MenuAction::LOBBIES:
-                push(std::make_unique<LobbyScreen>(font));
-                break;
-            case MenuAction::SET_WINDOWED: {
-                // Preserve anti-aliasing by requesting MSAA when recreating the window
-                sf::ContextSettings settings;
-                settings.antialiasingLevel = 16; // request high AA; driver may negotiate down
-                window.create(sf::VideoMode(1200, 900), "Sumo Balls", sf::Style::Default, settings);
-                window.setPosition(sf::Vector2i(0, 0));  // Position on primary monitor
-                Settings::setFullscreen(false);
-                // Optional: print actual AA level
-                auto s = window.getSettings();
-                std::cout << "AA level (windowed): " << s.antialiasingLevel << "\n";
-                break;
-            }
-            case MenuAction::SET_FULLSCREEN: {
-                sf::ContextSettings settings;
-                settings.antialiasingLevel = 16; // request high AA; driver may negotiate down
-                window.create(sf::VideoMode::getDesktopMode(), "Sumo Balls", sf::Style::Fullscreen, settings);
-                Settings::setFullscreen(true);
-                // Optional: print actual AA level
-                auto s = window.getSettings();
-                std::cout << "AA level (fullscreen): " << s.antialiasingLevel << "\n";
-                break;
-            }
-            case MenuAction::TOGGLE_FULLSCREEN:
-            case MenuAction::NONE:
-            default:
-                break;
-        }
-        
-        screens.back()->resetMenuAction();
+    if (action == MenuAction::NONE) return;
+
+    switch (action) {
+        case MenuAction::START_SINGLEPLAYER:
+            pop();
+            push(std::make_unique<GameScreen>(true));
+            break;
+        case MenuAction::START_GAME:
+            pop();
+            push(std::make_unique<GameScreen>());
+            break;
+        case MenuAction::OPTIONS:
+            push(std::make_unique<OptionsMenu>());
+            break;
+        case MenuAction::QUIT:
+            clear();
+            break;
+        case MenuAction::MAIN_MENU:
+            while (screens.size() > 1) pop();
+            pop();
+            push(std::make_unique<MainMenu>());
+            break;
+        case MenuAction::RESUME:
+            pop();
+            break;
+        case MenuAction::PAUSE:
+            push(std::make_unique<PauseMenu>());
+            break;
+        case MenuAction::FRIENDS:
+            push(std::make_unique<FriendsScreen>());
+            break;
+        case MenuAction::LOBBIES:
+            push(std::make_unique<LobbyScreen>());
+            break;
+        case MenuAction::SET_WINDOWED:
+            Settings::setFullscreen(false);
+            break;
+        case MenuAction::SET_FULLSCREEN:
+            Settings::setFullscreen(true);
+            break;
+        case MenuAction::TOGGLE_FULLSCREEN:
+        case MenuAction::NONE:
+        default:
+            break;
     }
+
+    screens.back()->resetMenuAction();
 }
 
-void ScreenStack::render(sf::RenderWindow& window) {
-    // Render from bottom up, but skip screens that are underneath non-overlay screens
-    for(int i = 0; i < static_cast<int>(screens.size()); i++){
-        // Check if any screen above this one is non-overlay
+void ScreenStack::render() {
+    for (int i = 0; i < static_cast<int>(screens.size()); ++i) {
         bool hasNonOverlayAbove = false;
-        for(int j = i + 1; j < static_cast<int>(screens.size()); j++){
-            if(!screens[j]->isOverlay()){
+        for (int j = i + 1; j < static_cast<int>(screens.size()); ++j) {
+            if (!screens[j]->isOverlay()) {
                 hasNonOverlayAbove = true;
                 break;
             }
         }
-        
-        // Only skip this screen if there's a non-overlay screen above it
-        if(!hasNonOverlayAbove){
-            screens[i]->render(window);
+        if (!hasNonOverlayAbove) {
+            screens[i]->render();
         }
     }
 }

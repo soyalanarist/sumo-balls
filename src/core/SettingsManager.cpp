@@ -7,24 +7,6 @@
 
 const std::string SettingsManager::CONFIG_FILE = "config.json";
 
-// Color palette (from Settings.cpp)
-static const sf::Color COLORS[] = {
-    sf::Color::White,
-    sf::Color::Red,
-    sf::Color::Green,
-    sf::Color::Blue,
-    sf::Color::Yellow,
-    sf::Color::Magenta,
-    sf::Color::Cyan,
-    {255, 165, 0}  // Orange
-};
-
-static const char* COLOR_NAMES[] = {
-    "White", "Red", "Green", "Blue", "Yellow", "Magenta", "Cyan", "Orange"
-};
-
-static constexpr int NUM_COLORS = sizeof(COLORS) / sizeof(COLORS[0]);
-
 SettingsManager& SettingsManager::instance() {
     static SettingsManager manager;
     return manager;
@@ -80,25 +62,11 @@ void SettingsManager::setOnlinePort(int port) {
     save();
 }
 
-sf::Color SettingsManager::getPlayerColor() const {
-    int validIndex = validateColorIndex(playerColorIndex);
-    return COLORS[validIndex];
-}
-
-const char* SettingsManager::getColorName(int index) const {
-    int validIndex = validateColorIndex(index);
-    return COLOR_NAMES[validIndex];
-}
-
-int SettingsManager::getColorCount() const {
-    return NUM_COLORS;
-}
-
 int SettingsManager::validateColorIndex(int index) const {
-    if (index < 0 || index >= NUM_COLORS) {
+    if (index != 0) {
         std::cerr << "[Settings Warning] Invalid color index " << index 
-                  << ", clamping to [0," << NUM_COLORS-1 << "]" << std::endl;
-        return std::clamp(index, 0, NUM_COLORS - 1);
+                  << ", clamping to 0" << std::endl;
+        return 0;
     }
     return index;
 }

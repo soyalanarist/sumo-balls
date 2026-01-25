@@ -1,17 +1,17 @@
 #pragma once
 
-#include <SFML/System/Vector2.hpp>
+#include "../../utils/VectorMath.h"
 #include <vector>
 
 class Controller {
 public:
     virtual ~Controller() = default;
 
-    virtual sf::Vector2f getMovementDirection(
+    virtual Vec2 getMovementDirection(
         float dt,
-        const sf::Vector2f& selfPosition,
-        const std::vector<sf::Vector2f>& otherPlayers,
-        const sf::Vector2f& arenaCenter,
+        const Vec2& selfPosition,
+        const std::vector<Vec2>& otherPlayers,
+        const Vec2& arenaCenter,
         float arenaRadius
     ) = 0;
 };

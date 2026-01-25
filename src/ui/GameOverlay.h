@@ -1,6 +1,8 @@
 #pragma once
-#include <SFML/Graphics.hpp>
 #include <string>
+
+// Legacy SFML overlay - orphaned during SDL/ImGui migration
+// File kept for reference but not built
 
 /// Renders game UI overlays (countdown, game over)
 /// Separates UI rendering from game logic

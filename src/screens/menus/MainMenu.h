@@ -1,13 +1,9 @@
 #include "Menu.h"
-#include "../../ui/Button.h"
 
 class MainMenu : public Menu {
 public:
-    explicit MainMenu(sf::Font& f);
+    MainMenu();
 
-    void update(sf::Time deltaTime, sf::RenderWindow& window) override;
-    void render(sf::RenderWindow& window) override;
-
-private:
-    std::vector<Button> buttons;
+    void update() override;
+    void render() override;
 };

@@ -1,28 +1,29 @@
 #include "Simulation.h"
 #include "../game/PhysicsValidator.h"
+#include "../utils/VectorMath.h"
 
 #include <cmath>
 #include <iostream>
 
 namespace {
-float magnitude(const sf::Vector2f& v) {
+float magnitude(const Vec2& v) {
     return std::sqrt(v.x * v.x + v.y * v.y);
 }
 
-sf::Vector2f normalize(const sf::Vector2f& v) {
+Vec2 normalize(const Vec2& v) {
     float len = magnitude(v);
     if (len <= 0.00001f) return {0.f, 0.f};
     return {v.x / len, v.y / len};
 }
 }
 
-Simulation::Simulation(float arenaRadius, sf::Vector2f arenaCenter)
+Simulation::Simulation(float arenaRadius, Vec2 arenaCenter)
     : center(arenaCenter), radius(arenaRadius){}
 
 void Simulation::setArenaRadius(float r) { radius = r; }
 float Simulation::getArenaRadius() const { return radius; }
 
-void Simulation::addPlayer(std::uint32_t id, sf::Vector2f spawnPos){
+void Simulation::addPlayer(std::uint32_t id, Vec2 spawnPos){
     SimPlayer p;
     p.id = id;
     p.position = spawnPos;
@@ -36,7 +37,7 @@ void Simulation::removePlayer(std::uint32_t id) {
     players.erase(id);
 }
 
-void Simulation::applyInput(std::uint32_t id, sf::Vector2f dir) {
+void Simulation::applyInput(std::uint32_t id, Vec2 dir) {
     auto it = players.find(id);
     if (it == players.end()) return;
     it->second.inputDir = normalize(dir);
@@ -62,14 +63,14 @@ void Simulation::tick(float dt) {
             p.velocity = (p.velocity / spd) * maxSpeed;
         }
 
-        p.position += p.velocity * dt;
+        p.position = p.position + p.velocity * dt;
         
         // Validate physics state
         PhysicsValidator::validateAndClampPosition(p.position);
         PhysicsValidator::validateAndClampVelocity(p.velocity);
 
         // Death if too far outside arena (50% of radius buffer)
-        sf::Vector2f toCenter = p.position - center;
+        Vec2 toCenter = p.position - center;
         float dist = magnitude(toCenter);
         float deathDist = radius + playerRadius * 0.5f;
         if (dist > deathDist) {
@@ -122,12 +123,12 @@ void Simulation::resolveCollisions() {
             float newVaN = ((vaN + vbN) + restitution * (vbN - vaN)) * 0.5f;
             float newVbN = ((vaN + vbN) + restitution * (vaN - vbN)) * 0.5f;
 
-            sf::Vector2f newVa(newVaN * nx + vaT * (-ny), newVaN * ny + vaT * nx);
-            sf::Vector2f newVb(newVbN * nx + vbT * (-ny), newVbN * ny + vbT * nx);
+            Vec2 newVa(newVaN * nx + vaT * (-ny), newVaN * ny + vaT * nx);
+            Vec2 newVb(newVbN * nx + vbT * (-ny), newVbN * ny + vbT * nx);
 
             constexpr float impulseBoost = 1.15f;
-            sf::Vector2f impulseA = (newVa - pa->velocity) * impulseBoost;
-            sf::Vector2f impulseB = (newVb - pb->velocity) * impulseBoost;
+            Vec2 impulseA = (newVa - pa->velocity) * impulseBoost;
+            Vec2 impulseB = (newVb - pb->velocity) * impulseBoost;
             
             // Validate impulses before applying
             if (!PhysicsValidator::isVelocityValid(impulseA) || 

@@ -1,11 +1,8 @@
 #include "TestFramework.h"
 
-// Forward declarations - tests are in other files
-extern int main(int argc, char* argv[]);
+// All tests are auto-registered via the TEST() macro
+// This executable simply runs all registered tests
 
-// Note: Individual test files will auto-register their tests
-// via the TEST() macro which uses static constructors
-
-int main(int argc, char* argv[]) {
+int main() {
     return test::TestSuite::instance().runAll();
 }

@@ -7,19 +7,19 @@ class AIController : public Controller {
 public:
     AIController(float difficulty = 0.5f);  // 0.0 = easy, 1.0 = hard
     
-    sf::Vector2f getMovementDirection(
+    Vec2 getMovementDirection(
         float dt,
-        const sf::Vector2f& selfPosition,
-        const std::vector<sf::Vector2f>& otherPlayers,
-        const sf::Vector2f& arenaCenter,
+        const Vec2& selfPosition,
+        const std::vector<Vec2>& otherPlayers,
+        const Vec2& arenaCenter,
         float arenaRadius
     ) override;
 
 private:
     float difficulty;
     float decisionTimer = 0.f;
-    sf::Vector2f cachedDirection{0.f, 0.f};
-    sf::Vector2f lastDirection{0.f, 0.f};
+    Vec2 cachedDirection{0.f, 0.f};
+    Vec2 lastDirection{0.f, 0.f};
     float aggressiveness;  // Personality trait: how aggressive this AI is
     float caution;         // Personality trait: how cautious near edges
     int patrolSign = 1;    // Persistent tangential movement direction (+1/-1)
@@ -35,10 +35,4 @@ private:
     
     // Random number generator (centralized, reused across frames)
     mutable std::mt19937 rng{std::random_device{}()};
-
-    // Helper methods
-    float calculateAdvantage(float selfDist, float opponentDist) const;
-    int selectTarget(const sf::Vector2f& selfPosition, 
-                     const std::vector<sf::Vector2f>& opponents,
-                     const sf::Vector2f& arenaCenter) const;
 };

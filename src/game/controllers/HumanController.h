@@ -3,11 +3,11 @@
 
 class HumanController : public Controller {
 public:
-    sf::Vector2f getMovementDirection(
+    Vec2 getMovementDirection(
         float dt,
-        const sf::Vector2f& selfPosition,
-        const std::vector<sf::Vector2f>& otherPlayers,
-        const sf::Vector2f& arenaCenter,
+        const Vec2& selfPosition,
+        const std::vector<Vec2>& otherPlayers,
+        const Vec2& arenaCenter,
         float arenaRadius
     ) override;
 };

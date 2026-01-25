@@ -1,6 +1,7 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
+// Legacy SFML UI - orphaned during SDL/ImGui migration
+// File kept for reference but not built
 
 class UIElement {
 public:

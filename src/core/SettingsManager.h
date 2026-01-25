@@ -1,6 +1,5 @@
 #pragma once
 #include <string>
-#include <SFML/Graphics.hpp>
 #include <memory>
 #include "../utils/GameConstants.h"
 
@@ -34,11 +33,6 @@ public:
     void setOnlineEnabled(bool enabled);
     void setOnlineHost(const std::string& host);
     void setOnlinePort(int port);
-    
-    // Color utilities
-    sf::Color getPlayerColor() const;
-    const char* getColorName(int index) const;
-    int getColorCount() const;
     
     // Persistence
     void load();

@@ -1,5 +1,7 @@
 #pragma once
-#include <SFML/Graphics.hpp>
+
+// Legacy SFML arena - orphaned during SDL/ImGui migration
+// File kept for reference but not built
 
 class Arena {
 public:

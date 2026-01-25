@@ -1,8 +1,10 @@
 #pragma once
 #include "../game/entities/PlayerEntity.h"
 #include "../game/entities/Arena.h"
-#include <SFML/Graphics.hpp>
 #include <vector>
+
+// Legacy SFML physics - orphaned during SDL/ImGui migration
+// File kept for reference but not built
 
 /// Particle effect for explosions
 struct Particle {
