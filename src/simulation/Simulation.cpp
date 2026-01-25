@@ -18,10 +18,10 @@ Vec2 normalize(const Vec2& v) {
 }
 
 Simulation::Simulation(float arenaRadius, Vec2 arenaCenter)
-    : center(arenaCenter), radius(arenaRadius){}
+    : arenaCenter(arenaCenter), arenaRadius(arenaRadius){}
 
-void Simulation::setArenaRadius(float r) { radius = r; }
-float Simulation::getArenaRadius() const { return radius; }
+void Simulation::setArenaRadius(float r) { arenaRadius = r; }
+float Simulation::getArenaRadius() const { return arenaRadius; }
 
 void Simulation::addPlayer(std::uint32_t id, Vec2 spawnPos){
     SimPlayer p;
@@ -70,9 +70,9 @@ void Simulation::tick(float dt) {
         PhysicsValidator::validateAndClampVelocity(p.velocity);
 
         // Death if too far outside arena (50% of radius buffer)
-        Vec2 toCenter = p.position - center;
+        Vec2 toCenter = p.position - arenaCenter;
         float dist = magnitude(toCenter);
-        float deathDist = radius + playerRadius * 0.5f;
+        float deathDist = arenaRadius + playerRadius * 0.5f;
         if (dist > deathDist) {
             p.alive = false;
             p.velocity = {0.f, 0.f};

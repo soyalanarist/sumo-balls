@@ -34,10 +34,12 @@ public:
     void tick(float dt);
 
     std::vector<SimSnapshotPlayer> snapshotPlayers() const;
+    
+    // Public access to arena parameters
+    Vec2 arenaCenter;
+    float arenaRadius;
 
 private:
-    Vec2 center;
-    float radius;
     std::unordered_map<std::uint32_t, SimPlayer> players;
 
     void resolveCollisions();

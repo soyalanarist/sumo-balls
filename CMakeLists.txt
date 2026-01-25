@@ -72,7 +72,9 @@ add_executable(sumo_balls
     src/screens/menus/GameOverMenu.cpp
 
     src/game/controllers/HumanController.cpp
+    src/game/controllers/AIController.cpp
 
+    src/simulation/Simulation.cpp
     src/network/NetCommon.cpp
     src/network/NetServer.cpp
     src/network/NetClient.cpp
