@@ -11,43 +11,107 @@ A fast-paced multiplayer arena game where players try to knock each other out of
 - **Particle Effects**: Visual feedback for explosions and collisions
 - **Account System**: User registration, login, and session management
 - **Friends & Lobbies**: Friend lists, friend requests, and private game lobbies
+- **Friend Queueing**: Create parties with friends, queue together, auto-match and auto-create lobbies
 - **Matchmaking**: Automatic queue-based match creation via coordinator service
 
-## Quick Start
+## UI Architecture (Core, Views, Scenes)
 
-### Prerequisites
+To simplify and standardize navigation and UI, the client now uses a clear separation between core navigation, UI views, and gameplay scenes:
 
-- **C++20** compiler (g++ 10+ or clang++ 12+)
-- **CMake** 3.16 or higher
-- **SDL2** 2.0+ (graphics and windowing)
-- **Go** 1.21+ (for matchmaking coordinator, optional)
-- ENet and ImGui (automatically fetched by CMake)
+- **Core** (navigation & base types):
+    - `src/core/Screen.h/.cpp` — base type with `update()`, `render()`, `handleInput()`, and `wantsInput()`
+    - `src/core/ScreenStack.h/.cpp` — stack-based navigator with event bubbling and overlay support
+    - `src/core/ScreenTransition.h` — enum of actions (e.g., `TO_MAIN_MENU`, `TO_MATCH`, `PAUSE`, `SET_FULLSCREEN`)
 
-### Build (Linux/WSL/macOS)
+- **Views** (UI screens):
+    - `src/ui/views/MainMenuView.*`, `PauseMenuView.*`, `SettingsView.*`, `LoginView.*`, `CreatePlayerView.*`, `FriendsView.*`, `LobbyView.*`, `MatchResultsView.*`
+    - Views typically push transitions (e.g., pressing Play sets `ScreenTransition::TO_MATCH`)
+
+- **Scenes** (gameplay):
+    - `src/ui/scenes/MatchScene.*` — main gameplay
+    - `src/ui/scenes/MatchResultsScene.*` — end-of-match summary overlay
+
+### Navigation Flow
+
+Screens communicate desired navigation via `ScreenTransition`. The `ScreenStack` polls the top screen, consumes the transition, and mutates the stack accordingly. Overlays (`isOverlay() == true`) render above non-overlays and participate in event bubbling while respecting `wantsInput()`.
+
+### Rationale
+
+- Removes the old “menus vs screens” duality in favor of a single base `Screen`
+- Clarifies intent with `views` (UI) and `scenes` (gameplay)
+- Centralizes transitions in core to make navigation robust and testable
+
+
+## Quick Start (Fresh Clone)
 
 ```bash
-# Install dependencies (Ubuntu/Debian)
-sudo apt-get update
-sudo apt-get install build-essential cmake libsdl2-dev
+# From repo root
+chmod +x scripts/bootstrap.sh
+./scripts/bootstrap.sh           # macOS or Debian/Ubuntu; installs deps and builds Debug
+./scripts/run-coordinator.sh &   # starts auth/friends/lobby service on :8888
+./scripts/run-server.sh 7777 &   # optional dedicated game server
+./scripts/run-client.sh          # launches client; auto-builds if missing
+```
 
-# Build everything
-mkdir -p build
+- macOS: installs Homebrew if missing, then installs cmake, ninja, pkg-config, SDL2 (+image/ttf/mixer), Go.
+- Debian/Ubuntu: installs build-essential, cmake, ninja, pkg-config, SDL2 dev libs, Go, clang-format/clang-tidy.
+- ENet/ImGui are fetched automatically by CMake.
+
+### CMake Presets
+- Configure: `cmake --preset debug` (or `release`, `asan`)
+- Build: `cmake --build --preset debug`
+
+Navigate the menu with your mouse; click "Play" for local or online tests.
+
+### Dev Stack with Docker (optional)
+
+```bash
+docker compose up coordinator        # starts coordinator on :8888 (with sqlite db persisted)
+docker compose up server --profile server  # builds + runs dedicated server on :7777
+docker compose up seed              # seeds two users (alice/bob) against coordinator
+```
+
+### Code Quality & CI
+
+- CI: GitHub Actions builds on Ubuntu/macOS, runs C++ tests and Go tests.
+- Formatting: `./scripts/format.sh` (clang-format for C++, gofmt for Go). Install pre-commit and run `pre-commit install` to auto-format.
+- Linting: clang-tidy/clang-format and gofmt available via bootstrap and CI.
+
+### Testing
+
+**C++ Tests** (Physics, Utilities)
+```bash
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-
-# Run unit tests (optional)
+ctest --output-on-failure
+# or
 ./sumo_balls_test
 ```
 
-### Run Locally (Offline)
-
+**Go Tests** (Auth, Friends, Lobbies)
 ```bash
-cd build
-./sumo_balls
+cd coordinator
+go test -v ./...
 ```
 
-Navigate the menu with your mouse, click "Play" for a local single-player game.
+**Linting & Formatting**
+```bash
+# Check code style
+./scripts/format.sh --check
+
+# Auto-format code
+./scripts/format.sh
+
+# Coordinator linting (requires golangci-lint)
+cd coordinator && golangci-lint run
+
+# C++ static analysis (requires clang-tidy)
+clang-tidy src/**/*.cpp --checks=-*,readability-*,performance-*,bugprone-*
+```
+
+### Coordinator Config
+
+- Env vars: `PORT` (default 8888), `DB_PATH` (default coordinator.db), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- Sample: copy `.env.example`, export it, then run `./scripts/run-coordinator.sh`.
 
 ---
 
