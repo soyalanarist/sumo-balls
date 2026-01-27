@@ -2,6 +2,7 @@
 
 #include "../../utils/VectorMath.h"
 #include <vector>
+#include <utility>
 
 class Controller {
 public:
@@ -10,8 +11,10 @@ public:
     virtual Vec2 getMovementDirection(
         float dt,
         const Vec2& selfPosition,
-        const std::vector<Vec2>& otherPlayers,
+        const Vec2& selfVelocity,
+        const std::vector<std::pair<Vec2, Vec2>>& otherPlayers, // pos, vel
         const Vec2& arenaCenter,
-        float arenaRadius
+        float currentArenaRadius,
+        float arenaAge
     ) = 0;
 };

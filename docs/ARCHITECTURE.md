@@ -1,11 +1,48 @@
 # Sumo Balls: Complete Architecture Guide
 
-## Overview
+## System Overview
 
-Sumo Balls is a multiplayer physics-based game with:
-- **Client**: C++20 with SFML 2.5+ (60 FPS, client-side prediction, server reconciliation)
-- **Game Server**: C++20 authoritative simulation (33 Hz snapshot rate, ENet UDP)
-- **Coordinator**: Go 1.21 matchmaking service (HTTP REST API, queue management, server registry)
+Sumo Balls is a multiplayer physics-based game with distributed architecture:
+- **Client**: C++20 with SDL2/ImGui (60 FPS, client-side prediction, server reconciliation)
+- **Game Server**: C++20 authoritative simulation (500Hz internal, 33Hz snapshot rate, ENet UDP)
+- **Coordinator**: Go 1.21 service (HTTP REST API, auth, friends, lobbies, SQLite DB)
+
+### High-Level Topology
+
+```
+┌─────────────────────────────────────┐      ┌─────────────────────┐
+│      Game Client (C++20/SDL2)       │      │  Game Server (C++)  │
+│  ┌───────────────────────────────┐  │      │  ┌───────────────┐  │
+│  │ UI/Screens (ImGui)            │  │      │  │ NetServer(ENet)   │
+│  │ - Auth, Lobbies, Friends      │  │      │  │ Port 7777     │  │
+│  └───────────────────────────────┘  │      │  └───────────────┘  │
+│  ┌───────────────────────────────┐  │      │  ┌───────────────┐  │
+│  │ SocialManager (HTTP)          │◄─┼─────┼─►│ Simulation    │  │
+│  │ - Auth, Friends, Lobbies      │  │ JSON│  │ - Authoritative   │
+│  └───────────────────────────────┘  │      │  │ - 500Hz tick  │  │
+│  ┌───────────────────────────────┐  │      │  └───────────────┘  │
+│  │ NetClient (ENet)              │◄─┼─────►│ Physics       │  │
+│  │ Port 7777                     │  │ UDP  │ - Player motion    │
+│  └───────────────────────────────┘  │      │ - Collision      │  │
+│  ┌───────────────────────────────┐  │      └─────────────────────┘
+│  │ Simulation (Client-side)      │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+         HTTP (port 8888) ▲
+         JSON over REST    │
+┌─────────────────────────────────────┐
+│   Coordinator (Go/SQLite)           │
+│   Port 8888                         │
+├─────────────────────────────────────┤
+│ Auth Service      │ Friends Service │
+│ - Register/Login  │ - Send request  │
+│ - OAuth2          │ - List friends  │
+├─────────────────────────────────────┤
+│ Lobby Service  │ Database (SQLite) │
+│ - Create/Join  │ - Users, Sessions │
+│ - List lobbies │ - Friends, Lobbies│
+└─────────────────────────────────────┘
+```
 
 ## Quick Start
 

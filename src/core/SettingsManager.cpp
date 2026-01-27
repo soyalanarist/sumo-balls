@@ -19,6 +19,7 @@ SettingsManager::SettingsManager()
     , onlineEnabled(true)  // Force online as the default mode
     , onlineHost("127.0.0.1")
     , onlinePort(GameConstants::DEFAULT_SERVER_PORT)
+    , aiDifficulty(2)  // Default to Medium
 {
 }
 
@@ -59,6 +60,11 @@ void SettingsManager::setOnlineHost(const std::string& host) {
 
 void SettingsManager::setOnlinePort(int port) {
     onlinePort = validatePort(port);
+    save();
+}
+
+void SettingsManager::setAIDifficulty(int difficulty) {
+    aiDifficulty = std::clamp(difficulty, 0, 4);  // 0-4 for 5 difficulty levels
     save();
 }
 
@@ -131,6 +137,10 @@ void SettingsManager::load() {
         }
     }
     
+    if (json.has("aiDifficulty")) {
+        aiDifficulty = std::clamp(json.getInt("aiDifficulty"), 0, 4);
+    }
+    
     std::cout << "[Settings] Loaded from " << CONFIG_FILE << std::endl;
 }
 
@@ -142,6 +152,7 @@ void SettingsManager::save() {
     json.set("onlineEnabled", onlineEnabled);
     json.set("onlineHost", onlineHost);
     json.set("onlinePort", onlinePort);
+    json.set("aiDifficulty", aiDifficulty);
     
     std::ofstream file(CONFIG_FILE);
     if (!file) {
@@ -160,6 +171,7 @@ void SettingsManager::resetToDefaults() {
     onlineEnabled = false;
     onlineHost = "127.0.0.1";
     onlinePort = GameConstants::DEFAULT_SERVER_PORT;
+    aiDifficulty = 2;  // Medium
     save();
     std::cout << "[Settings] Reset to defaults" << std::endl;
 }

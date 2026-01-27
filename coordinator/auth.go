@@ -402,7 +402,20 @@ func (a *AuthService) handleGoogleCallback(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	// Issue session token
+	// Check for existing active sessions
+	activeSessions, err := a.db.GetActiveSessionsByUserID(user.ID)
+	if err != nil {
+		log.Printf("[Auth] Failed to check active sessions: %v", err)
+	}
+	if len(activeSessions) > 0 {
+		log.Printf("[Auth] User %d has %d active session(s), invalidating them", user.ID, len(activeSessions))
+		// Invalidate all existing sessions to prevent concurrent logins
+		if err := a.db.DeleteAllUserSessions(user.ID); err != nil {
+			log.Printf("[Auth] Failed to invalidate old sessions: %v", err)
+		}
+	}
+
+	// Issue new session token
 	sessToken := generateSecureToken()
 	expiresAt := timeNow().Add(24 * 7 * timeHour)
 	if err := a.db.CreateSession(user.ID, sessToken, expiresAt); err != nil {
@@ -418,7 +431,7 @@ func (a *AuthService) handleGoogleCallback(w http.ResponseWriter, r *http.Reques
 
 	// Simple completion page
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `<!doctype html>
+	fmt.Fprint(w, `<!doctype html>
 <html lang="en">
 <head>
 	<meta charset="utf-8" />

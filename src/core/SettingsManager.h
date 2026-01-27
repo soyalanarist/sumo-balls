@@ -24,6 +24,7 @@ public:
     bool isOnlineEnabled() const { return onlineEnabled; }
     std::string getOnlineHost() const { return onlineHost; }
     int getOnlinePort() const { return onlinePort; }
+    int getAIDifficulty() const { return aiDifficulty; }
     
     // Setters with validation
     void setLeftyMode(bool enabled);
@@ -33,6 +34,7 @@ public:
     void setOnlineEnabled(bool enabled);
     void setOnlineHost(const std::string& host);
     void setOnlinePort(int port);
+    void setAIDifficulty(int difficulty);
     
     // Persistence
     void load();
@@ -58,6 +60,7 @@ private:
     bool onlineEnabled;
     std::string onlineHost;
     int onlinePort;
+    int aiDifficulty;  // 0=VeryEasy, 1=Easy, 2=Medium, 3=Hard, 4=Veteran
     
     static const std::string CONFIG_FILE;
     

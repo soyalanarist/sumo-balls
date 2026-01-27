@@ -1,0 +1,84 @@
+---
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+  allow-parallel-runners: false
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-source: false
+  sort-by-severity: false
+
+issues:
+  exclude-rules:
+    - linters:
+        - revive
+      text: "exported .* should have comment"
+    - linters:
+        - revive
+      text: "if-return: some problems"
+  exclude-dirs:
+    - vendor
+    - build
+    - dist
+
+linters:
+  enable:
+    - bodyclose
+    - dogsled
+    - dupl
+    - errname
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - gocritic
+    - godot
+    - gofmt
+    - goimports
+    - gomnd
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ifshort
+    - ineffassign
+    - makezero
+    - misspell
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - stylecheck
+    - testpackage
+    - unconvert
+    - unused
+    - wastedassign
+    - whitespace
+
+linters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: sumo-balls-coordinator
+  govet:
+    enable-all: true
+    disable:
+      - shadow
+  revive:
+    enable-all-rules: false
+    rules:
+      - name: argument-limit
+        arguments: [8]
+      - name: cyclomatic
+        arguments: [10]
+      - name: max-public-structs
+        arguments: [5]
+      - name: line-length-limit
+        arguments: [120]

@@ -100,12 +100,6 @@ bool GraphicsContext::processEvents(ImGuiManager* imgui) {
             case SDL_QUIT:
                 running = false;
                 return true;
-            case SDL_KEYDOWN:
-                if (event.key.keysym.sym == SDLK_ESCAPE) {
-                    running = false;
-                    return true;
-                }
-                break;
             case SDL_WINDOWEVENT:
                 if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
                     running = false;
@@ -113,6 +107,9 @@ bool GraphicsContext::processEvents(ImGuiManager* imgui) {
                 }
                 break;
         }
+        
+        // ESC handling moved to screens (they can override in handleInput)
+        // Only quit on ESC if no screen handles it
     }
     return false;
 }

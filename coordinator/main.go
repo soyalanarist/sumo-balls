@@ -33,10 +33,11 @@ func respondJSON(w http.ResponseWriter, data interface{}, statusCode int) {
 
 // QueuedPlayer represents a player waiting for a match.
 // In C++, this would be a struct with member variables:
-//   struct QueuedPlayer {
-//       std::string playerId;
-//       uint64_t enqueueTime;
-//   };
+//
+//	struct QueuedPlayer {
+//	    std::string playerId;
+//	    uint64_t enqueueTime;
+//	};
 type QueuedPlayer struct {
 	PlayerID   string `json:"player_id"`
 	EnqueuedAt int64  `json:"enqueued_at"` // Unix milliseconds
@@ -45,22 +46,22 @@ type QueuedPlayer struct {
 // GameServer represents a registered game server in the pool.
 // In C++: struct GameServer { std::string id; std::string host; uint16_t port; ... };
 type GameServer struct {
-	ServerID    string
-	Host        string
-	Port        int
-	MaxPlayers  int
-	CurrentLoad int
+	ServerID      string
+	Host          string
+	Port          int
+	MaxPlayers    int
+	CurrentLoad   int
 	LastHeartbeat time.Time
 }
 
 // Match represents an active match session.
 // In C++: struct Match { std::string id; std::vector<std::string> playerIds; ... };
 type Match struct {
-	MatchID    string
-	ServerID   string
-	PlayerIDs  []string
-	Token      string // Secure token clients use to join
-	CreatedAt  time.Time
+	MatchID   string
+	ServerID  string
+	PlayerIDs []string
+	Token     string // Secure token clients use to join
+	CreatedAt time.Time
 }
 
 // QueueRequest is the JSON payload a client sends to enqueue.
@@ -73,11 +74,11 @@ type QueueRequest struct {
 
 // QueueResponse is sent back to the client after enqueuing.
 type QueueResponse struct {
-	QueueID    string `json:"queue_id"`
-	Status     string `json:"status"` // "queued", "error", etc.
-	Message    string `json:"message,omitempty"`
-	ElapsedMs  int64  `json:"elapsed_ms,omitempty"`
-	EstWaitMs  int64  `json:"est_wait_ms,omitempty"`
+	QueueID   string `json:"queue_id"`
+	Status    string `json:"status"` // "queued", "error", etc.
+	Message   string `json:"message,omitempty"`
+	ElapsedMs int64  `json:"elapsed_ms,omitempty"`
+	EstWaitMs int64  `json:"est_wait_ms,omitempty"`
 }
 
 // MatchFoundResponse is sent when a match is ready.
@@ -106,12 +107,12 @@ type ServerRegisterRequest struct {
 // In C++, this would be a singleton class with private member variables and mutex locks.
 // Go uses a struct with a sync.Mutex (similar to std::mutex in C++).
 type Coordinator struct {
-	mu              sync.Mutex            // Protects all fields below (like std::lock_guard in C++)
-	queuedPlayers   []QueuedPlayer        // FIFO queue of waiting players
+	mu              sync.Mutex             // Protects all fields below (like std::lock_guard in C++)
+	queuedPlayers   []QueuedPlayer         // FIFO queue of waiting players
 	gameServers     map[string]*GameServer // Pool of available game servers
-	activeMatches   map[string]*Match     // Ongoing matches by matchID
-	playerQueues    map[string]string     // Map: playerID -> queueID for lookups
-	nextMatchNumber int64                 // Counter for unique match IDs
+	activeMatches   map[string]*Match      // Ongoing matches by matchID
+	playerQueues    map[string]string      // Map: playerID -> queueID for lookups
+	nextMatchNumber int64                  // Counter for unique match IDs
 }
 
 // NewCoordinator creates a new coordinator instance.
@@ -178,7 +179,8 @@ func (c *Coordinator) Dequeue(playerID string) {
 
 // GetQueueStatus returns wait time and queue position.
 // In C++: struct QueueStatus { int64_t elapsedMs; int64_t estWaitMs; };
-//         QueueStatus Coordinator::getQueueStatus(const std::string& playerId) { ... }
+//
+//	QueueStatus Coordinator::getQueueStatus(const std::string& playerId) { ... }
 func (c *Coordinator) GetQueueStatus(playerID string) (elapsedMs int64, estWaitMs int64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -399,7 +401,7 @@ func (c *Coordinator) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := QueueResponse{
-		Status:   "queued",
+		Status:    "queued",
 		ElapsedMs: elapsed,
 		EstWaitMs: estWait,
 	}
@@ -491,7 +493,8 @@ func (c *Coordinator) handleMatches(w http.ResponseWriter, r *http.Request) {
 
 // timeNowMs returns current time in milliseconds since epoch.
 // In C++: auto now = std::chrono::system_clock::now();
-//         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(...);
+//
+//	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(...);
 func timeNowMs() int64 {
 	return time.Now().UnixNano() / 1e6
 }
@@ -501,8 +504,10 @@ func timeNowMs() int64 {
 // ============================================================================
 
 func main() {
+	config := LoadConfig()
+
 	// Initialize database
-	db, err := NewDatabase("coordinator.db")
+	db, err := NewDatabase(config.DBPath)
 	if err != nil {
 		log.Fatalf("[Fatal] Failed to initialize database: %v", err)
 	}
@@ -512,6 +517,10 @@ func main() {
 	authService := NewAuthService(db)
 	friendsService := NewFriendsService(db)
 	lobbyService := NewLobbyService(db)
+	usernameService := NewUsernameService(db)
+	partyService := NewPartyService(db)
+	queueService := NewQueueService(db, lobbyService)
+	defer queueService.Stop()
 
 	// Create coordinator instance (for legacy matchmaking endpoints)
 	coord := NewCoordinator()
@@ -531,6 +540,10 @@ func main() {
 	http.HandleFunc("/auth/google/callback", authService.handleGoogleCallback)
 	http.HandleFunc("/auth/google/status", authService.handleGoogleStatus)
 
+	// Username/handle endpoints (require authentication)
+	http.HandleFunc("/username/check", usernameService.handleCheckAvailability)
+	http.HandleFunc("/username/set", authService.authMiddleware(usernameService.handleSetHandle))
+
 	// Friend endpoints (require authentication)
 	http.HandleFunc("/friends/send", authService.authMiddleware(friendsService.handleSendRequest))
 	http.HandleFunc("/friends/accept", authService.authMiddleware(friendsService.handleAcceptRequest))
@@ -538,26 +551,31 @@ func main() {
 	http.HandleFunc("/friends/list", authService.authMiddleware(friendsService.handleListFriends))
 	http.HandleFunc("/friends/pending", authService.authMiddleware(friendsService.handlePendingRequests))
 
+	// Party endpoints (require authentication)
+	http.HandleFunc("/party/create", authService.authMiddleware(partyService.handleCreateParty))
+	http.HandleFunc("/party/get", authService.authMiddleware(partyService.handleGetParty))
+	http.HandleFunc("/party/invite", authService.authMiddleware(partyService.handleInviteFriend))
+	http.HandleFunc("/party/accept-invite", authService.authMiddleware(partyService.handleAcceptInvite))
+	http.HandleFunc("/party/leave", authService.authMiddleware(partyService.handleLeaveParty))
+
+	// Queue endpoints (require authentication)
+	http.HandleFunc("/queue/start", authService.authMiddleware(queueService.handleStartQueue))
+	http.HandleFunc("/queue/cancel", authService.authMiddleware(queueService.handleCancelQueue))
+	http.HandleFunc("/queue/status", authService.authMiddleware(queueService.handleQueueStatus))
+	http.HandleFunc("/queue/accept-match", authService.authMiddleware(queueService.handleAcceptMatch))
+	http.HandleFunc("/queue/decline-match", authService.authMiddleware(queueService.handleDeclineMatch))
+
 	// Lobby endpoints (require authentication)
 	http.HandleFunc("/lobby/create", authService.authMiddleware(lobbyService.handleCreateLobby))
 	http.HandleFunc("/lobby/join", authService.authMiddleware(lobbyService.handleJoinLobby))
 	http.HandleFunc("/lobby/leave", authService.authMiddleware(lobbyService.handleLeaveLobby))
 	http.HandleFunc("/lobby/ready", authService.authMiddleware(lobbyService.handleSetReady))
 	http.HandleFunc("/lobby/get", authService.authMiddleware(lobbyService.handleGetLobby))
+	http.HandleFunc("/lobby/list", authService.authMiddleware(lobbyService.handleListLobbies))
 
-	// Legacy matchmaking endpoints (for backward compatibility)
-	http.HandleFunc("/enqueue", coord.handleEnqueue)
-	http.HandleFunc("/cancel", coord.handleCancel)
-	http.HandleFunc("/queue/status", coord.handleStatus)
-	http.HandleFunc("/server/register", coord.handleRegisterServer)
-	http.HandleFunc("/server/heartbeat", coord.handleHeartbeat)
-	http.HandleFunc("/matches", coord.handleMatches) // Debug endpoint
-
-	// Start HTTP server on port 8888
-	port := ":8888"
-	log.Printf("[Coordinator] Starting with auth, friends, and lobby system on %s\n", port)
-	log.Printf("[Coordinator] Database: coordinator.db\n")
-	if err := http.ListenAndServe(port, nil); err != nil {
+	log.Printf("[Coordinator] Starting with auth, friends, party, and queue system on %s\n", config.Port)
+	log.Printf("[Coordinator] Database: %s\n", config.DBPath)
+	if err := http.ListenAndServe(config.Port, nil); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }

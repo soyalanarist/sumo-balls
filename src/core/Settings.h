@@ -10,6 +10,7 @@ struct Settings {
     static bool onlineEnabled;
     static std::string onlineHost;
     static int onlinePort;
+    static int aiDifficulty;
     static std::string authToken;      // Auth token from coordinator
     static std::string username;       // Current logged-in username
     static int userID;                 // Current logged-in user ID
@@ -53,6 +54,11 @@ struct Settings {
         syncFromManager();
     }
     
+    static void setAIDifficulty(int difficulty) {
+        SettingsManager::instance().setAIDifficulty(difficulty);
+        syncFromManager();
+    }
+    
 private:
     // Sync static vars from manager for backward compat
     static void syncFromManager() {
@@ -63,6 +69,7 @@ private:
         onlineEnabled = mgr.isOnlineEnabled();
         onlineHost = mgr.getOnlineHost();
         onlinePort = mgr.getOnlinePort();
+        aiDifficulty = mgr.getAIDifficulty();
     }
 };
 

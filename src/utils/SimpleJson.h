@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 #include <sstream>
 
 // Simple JSON parser/builder for coordinator API
@@ -214,6 +215,45 @@ public:
     
     bool has(const std::string& key) const {
         return data.find(key) != data.end();
+    }
+    
+    // Parse array of objects (returns vector of SimpleJson)
+    std::vector<SimpleJson> getArray(const std::string& key) const {
+        std::vector<SimpleJson> result;
+        std::string arrayStr = get(key);
+        
+        if (arrayStr.empty() || arrayStr[0] != '[') {
+            return result;
+        }
+        
+        // Remove [ and ]
+        if (arrayStr.length() >= 2) {
+            arrayStr = arrayStr.substr(1, arrayStr.length() - 2);
+        }
+        
+        // Split by objects
+        int braceCount = 0;
+        size_t objStart = 0;
+        bool inObject = false;
+        
+        for (size_t i = 0; i < arrayStr.length(); ++i) {
+            if (arrayStr[i] == '{') {
+                if (!inObject) {
+                    objStart = i;
+                    inObject = true;
+                }
+                braceCount++;
+            } else if (arrayStr[i] == '}') {
+                braceCount--;
+                if (braceCount == 0 && inObject) {
+                    std::string objStr = arrayStr.substr(objStart, i - objStart + 1);
+                    result.push_back(SimpleJson::parse(objStr));
+                    inObject = false;
+                }
+            }
+        }
+        
+        return result;
     }
     
     std::string toString() const {

@@ -33,13 +33,29 @@ func (f *FriendsService) handleSendRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get friend by username
-	friend, err := f.db.GetUserByUsername(req.FriendUsername)
-	if err != nil {
-		log.Printf("[Friends] Database error: %v", err)
-		respondJSON(w, FriendsResponse{Success: false, Message: "Server error"}, http.StatusInternalServerError)
-		return
+	// Try to find friend by handle first (preferred), then fall back to username
+	var friend *User
+	var err error
+
+	if req.FriendUsername != "" {
+		// Try handle first
+		friend, err = f.db.GetUserByHandle(req.FriendUsername)
+		if err != nil {
+			log.Printf("[Friends] Database error: %v", err)
+			respondJSON(w, FriendsResponse{Success: false, Message: "Server error"}, http.StatusInternalServerError)
+			return
+		}
+		// If not found by handle, try username (for backwards compatibility)
+		if friend == nil {
+			friend, err = f.db.GetUserByUsername(req.FriendUsername)
+			if err != nil {
+				log.Printf("[Friends] Database error: %v", err)
+				respondJSON(w, FriendsResponse{Success: false, Message: "Server error"}, http.StatusInternalServerError)
+				return
+			}
+		}
 	}
+
 	if friend == nil {
 		respondJSON(w, FriendsResponse{Success: false, Message: "User not found"}, http.StatusNotFound)
 		return
@@ -50,14 +66,27 @@ func (f *FriendsService) handleSendRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Check if already friends or request pending
+	existingFriends, _ := f.db.GetFriends(user.ID)
+	for _, fr := range existingFriends {
+		if fr.FriendID == friend.ID || fr.UserID == friend.ID {
+			respondJSON(w, FriendsResponse{Success: false, Message: "Already friends with this user"}, http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Send friend request
 	if err := f.db.SendFriendRequest(user.ID, friend.ID); err != nil {
 		log.Printf("[Friends] Send request error: %v", err)
-		respondJSON(w, FriendsResponse{Success: false, Message: "Failed to send friend request"}, http.StatusInternalServerError)
+		respondJSON(w, FriendsResponse{Success: false, Message: "Failed to send friend request or request already exists"}, http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("[Friends] %s sent friend request to %s", user.Username, friend.Username)
+	displayName := friend.Handle
+	if displayName == "" {
+		displayName = friend.Username
+	}
+	log.Printf("[Friends] %s sent friend request to %s", user.Username, displayName)
 	respondJSON(w, FriendsResponse{Success: true, Message: "Friend request sent"}, http.StatusOK)
 }
 

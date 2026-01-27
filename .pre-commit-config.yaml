@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+  - repo: local
+    hooks:
+      - id: clang-format
+        name: clang-format
+        entry: scripts/format.sh
+        language: system
+        files: "\.(cpp|hpp|h)$"
+        pass_filenames: false
+      - id: gofmt
+        name: gofmt
+        entry: scripts/format.sh
+        language: system
+        files: "\.go$"
+        pass_filenames: false

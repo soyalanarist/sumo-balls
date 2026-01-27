@@ -1,6 +1,6 @@
 #include "Screen.h"
-#include "../screens/menus/MenuAction.h"
+#include "ScreenTransition.h"
 
-MenuAction Screen::getMenuAction() const {
-    return MenuAction::NONE;
+ScreenTransition Screen::getTransition() const {
+    return ScreenTransition::NONE;
 }

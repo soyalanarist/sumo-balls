@@ -1,0 +1,17 @@
+# Basic warning and sanitizer setup
+function(enable_project_warnings target)
+  if (MSVC)
+    target_compile_options(${target} PRIVATE /W4)
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+endfunction()
+
+function(enable_sanitizers target)
+  if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+      target_compile_options(${target} PRIVATE -fsanitize=address,undefined)
+      target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+    endif()
+  endif()
+endfunction()

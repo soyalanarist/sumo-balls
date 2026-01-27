@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.coordinator
+    command: ["/bin/sh", "-c", "mkdir -p /data && cd /data && /app/coordinator-bin"]
+    ports:
+      - "8888:8888"
+    volumes:
+      - coordinator-data:/data
+
+  server:
+    profiles: [server]
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "7777:7777"
+    depends_on:
+      - coordinator
+
+  seed:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      - coordinator
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "sleep 3 && \
+      for u in alice bob; do \
+        curl -sf -X POST http://coordinator:8888/auth/register \
+          -H 'Content-Type: application/json' \
+          -d '{"username":"'$u'","password":"password123","email":"'$u'@example.com"}' || true; \
+      done"
+
+volumes:
+  coordinator-data:

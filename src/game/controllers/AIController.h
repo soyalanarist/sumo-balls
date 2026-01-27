@@ -2,37 +2,54 @@
 #pragma once
 #include "Controller.h"
 #include <random>
+#include <utility>
+
+enum class DifficultyLevel { VeryEasy, Easy, Medium, Hard, Veteran };
+
+struct DifficultyProfile {
+    float reactionLag;       // seconds between decisions
+    float aggression;        // attack weight
+    float edgeFear;          // center bias near edge
+    float shrinkFear;        // pre-emptive shrink bias
+    float crowdAvoid;        // sidestep when crowded
+    float attackBias;        // outward push component
+    float burstChance;       // probability per second to start a burst
+    float burstDuration;     // seconds the burst lasts
+    float jitter;            // radians/sec wander jitter
+    float wanderStrength;    // wander mix scale
+};
 
 class AIController : public Controller {
 public:
-    AIController(float difficulty = 0.5f);  // 0.0 = easy, 1.0 = hard
-    
+    AIController(DifficultyLevel level = DifficultyLevel::Medium);
+    AIController(float difficultyScalar); // compatibility: 0..1 maps to profiles
+
     Vec2 getMovementDirection(
         float dt,
         const Vec2& selfPosition,
-        const std::vector<Vec2>& otherPlayers,
+        const Vec2& selfVelocity,
+        const std::vector<std::pair<Vec2, Vec2>>& otherPlayers,
         const Vec2& arenaCenter,
-        float arenaRadius
+        float currentArenaRadius,
+        float arenaAge
     ) override;
 
 private:
-    float difficulty;
+    DifficultyLevel level;
+    DifficultyProfile profile;
     float decisionTimer = 0.f;
+    float reactionAccumulator = 0.f;
     Vec2 cachedDirection{0.f, 0.f};
     Vec2 lastDirection{0.f, 0.f};
-    float aggressiveness;  // Personality trait: how aggressive this AI is
-    float caution;         // Personality trait: how cautious near edges
-    int patrolSign = 1;    // Persistent tangential movement direction (+1/-1)
-    float edgeCooldown = 0.f; // Prevent rapid direction flips near the boundary
-    // Aggression bursts: occasional 5-second windows of higher aggression
+    int patrolSign = 1;          // tangential direction (+1/-1)
+    float edgeCooldown = 0.f;    // prevent oscillation flips
     bool burstActive = false;
-    float burstTimer = 0.f;       // counts down during burst
-    float nextBurstDelay = 0.f;   // time until next burst starts
-    // Wander/curvature to avoid straight-line traversals
-    float wanderAngle = 0.f;      // evolving heading noise
-    float wanderJitter = 2.4f;    // radians/sec noise amplitude
-    float wanderStrength = 0.32f; // scale of wander vector blended into steering
-    
-    // Random number generator (centralized, reused across frames)
+    float burstTimer = 0.f;
+    float burstCooldown = 0.f;   // time until next burst can start
+    float wanderAngle = 0.f;
+
+    static DifficultyProfile makeProfile(DifficultyLevel lvl);
+
+    // Random number generator
     mutable std::mt19937 rng{std::random_device{}()};
 };

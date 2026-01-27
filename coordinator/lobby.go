@@ -272,3 +272,33 @@ func (l *LobbyService) getLobbyWithMembers(lobbyID string) (*Lobby, error) {
 	lobby.Members = members
 	return lobby, nil
 }
+
+// List all active lobbies
+func (l *LobbyService) handleListLobbies(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r)
+	if user == nil {
+		respondJSON(w, ListLobbiesResponse{Success: false, Message: "Unauthorized"}, http.StatusUnauthorized)
+		return
+	}
+
+	lobbies, err := l.db.GetActiveLobbies()
+	if err != nil {
+		log.Printf("[Lobby] Get active lobbies error: %v", err)
+		respondJSON(w, ListLobbiesResponse{Success: false, Message: "Failed to fetch lobbies"}, http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to pointers and enrich with members
+	var lobbyPtrs []*Lobby
+	for i := range lobbies {
+		members, err := l.db.GetLobbyMembers(lobbies[i].ID)
+		if err != nil {
+			log.Printf("[Lobby] Get members error: %v", err)
+			continue
+		}
+		lobbies[i].Members = members
+		lobbyPtrs = append(lobbyPtrs, &lobbies[i])
+	}
+
+	respondJSON(w, ListLobbiesResponse{Success: true, Lobbies: lobbyPtrs, Count: len(lobbyPtrs)}, http.StatusOK)
+}

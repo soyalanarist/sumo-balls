@@ -1,6 +1,6 @@
 #include "network/NetServer.h"
 #include "network/NetProtocol.h"
-#include "simulation/Simulation.h"
+#include "game/simulation/Simulation.h"
 
 #include "utils/VectorMath.h"
 #include <iostream>

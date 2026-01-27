@@ -1,28 +1,33 @@
 # Test Suite for Sumo Balls
 
-This directory contains the testing infrastructure for the Sumo Balls game.
+Comprehensive test organization for the Sumo Balls game. Tests are organized by subsystem and test type.
 
 ## Test Organization
 
 ```
 tests/
-├── TestFramework.h         # Lightweight custom test framework
-├── TestRunner.cpp          # Main test executable entry point
-├── unit/                   # Unit tests for individual modules
-│   ├── SettingsTest.cpp    # Tests for Settings module
-│   ├── NetProtocolTest.cpp # Tests for network protocol
-│   └── LoggerTest.cpp      # Tests for logging system
-└── integration/            # Integration tests (planned)
+├── README.md                    # This file
+├── TestFramework.h              # Custom test framework
+├── TestRunner.cpp               # Main test runner
+├── fixtures/                    # Shared test data and fixtures
+├── unit/                        # Unit tests by subsystem
+│   ├── core/                    # Logger, Settings tests
+│   ├── game/                    # Physics, Simulation tests
+│   ├── network/                 # Network protocol tests
+│   └── ui/                      # UI component tests
+├── integration/                 # Cross-component tests (planned)
+└── e2e/                         # End-to-end tests
+    └── smoke_test.cpp           # Basic smoke tests
 ```
 
 ## Running Tests
 
 Build and run all tests:
 ```bash
-cd build
-cmake ..
-cmake --build .
-./sumo_balls_test
+# From project root
+cd /home/soyal/sumo-balls
+cmake --build build
+./build/sumo_balls_test
 ```
 
 Or use CTest:
@@ -38,10 +43,10 @@ We use a lightweight custom test framework that doesn't require external depende
 ### Writing Tests
 
 ```cpp
-#include "../TestFramework.h"
+#include "TestFramework.h"
 #include "../../src/your/module.h"
 
-TEST(ModuleName, TestName) {
+bool testMyFeature(std::string& errorMsg) {
     // Arrange
     int expected = 42;
     
@@ -49,18 +54,25 @@ TEST(ModuleName, TestName) {
     int actual = yourFunction();
     
     // Assert
-    TEST_EQUAL(expected, actual, "Values should match");
+    TEST_EQUAL(actual, expected, "Values should match");
     TEST_TRUE(actual > 0);
     TEST_FALSE(actual < 0);
-    TEST_ASSERT(actual == 42, "Custom condition message");
     
     return true;  // Test passes
+}
+
+// Auto-register test
+namespace {
+    struct MyTestsRegistration {
+        MyTestsRegistration() {
+            test::TestSuite::instance().registerTest("Category::FeatureName", testMyFeature);
+        }
+    } myTests;
 }
 ```
 
 ### Test Macros
 
-- `TEST(suite, name)` - Define a test function
 - `TEST_ASSERT(condition, message)` - Assert a condition is true
 - `TEST_EQUAL(expected, actual, message)` - Assert two values are equal
 - `TEST_TRUE(condition)` - Assert condition is true
@@ -68,78 +80,48 @@ TEST(ModuleName, TestName) {
 
 ## Test Coverage
 
-### Core Module
+### Unit Tests
 
-- ✅ Settings static member access
-- ✅ Color management and validation
-- ✅ Fullscreen and lefty mode toggles
-- ✅ Configuration save/load
+**Core Module** (`tests/unit/core/`)
+- ✅ Logger: All log levels, timestamps, filtering
+- ✅ Settings: Static members, colors, modes
 
-### Network Module
+**Game Module** (`tests/unit/game/`)
+- ✅ Physics: Finite checks, position/velocity validation, clamping
 
-- ✅ ParseResult success/failure cases
-- ✅ Error message formatting
-- ✅ Error type validation
-- ✅ Context preservation in errors
+**Network Module** (`tests/unit/network/`)
+- ✅ NetProtocol: Message parsing and error handling
 
-### Logging System
-
-- ✅ All log levels (DEBUG, INFO, WARN, ERROR, CRITICAL)
-- ✅ Timestamp generation
-- ✅ Module tagging
-- ✅ File output
-- ✅ Log level filtering
-- ✅ Multiple module logging
-
-## Future Test Plans
-
-### Unit Tests (Planned)
-- Simulation physics tests
-- Input system tests
-- UI component tests
-- Game entity tests (Player, Arena)
+**UI Module** (`tests/unit/ui/`)
+- ✅ UI Components: Button, toggles, rendering
 
 ### Integration Tests (Planned)
 - Client-server communication
-- Matchmaking flow
-- Full game session
+- Network message handling  
+- Game server state management
+- Full game flow scenarios
 
-### Performance Tests (Planned)
-- Network serialization benchmarks
-- Simulation tick performance
-- Rendering frame rate
+### E2E Tests
+- Smoke test: Basic startup and shutdown
 
-## Test Results
+## File Organization
 
-Last test run: All 23 tests passing ✅
+When adding tests, follow this naming and placement pattern:
 
-```
-Settings: 7 tests
-NetProtocol: 6 tests
-Logger: 10 tests
-```
-
-## Continuous Testing
-
-For development, you can watch for changes and auto-run tests:
-
-```bash
-# Simple approach
-while true; do inotifywait -r -e modify src/ tests/; cmake --build build && ./build/sumo_balls_test; done
-```
+| Test Type | Location | Naming |
+|-----------|----------|--------|
+| Unit - Core | `tests/unit/core/` | `{Component}Test.cpp` |
+| Unit - Game | `tests/unit/game/` | `{Component}Test.cpp` |
+| Unit - Network | `tests/unit/network/` | `{Protocol}Test.cpp` |
+| Unit - UI | `tests/unit/ui/` | `{Component}Test.cpp` |
+| Integration | `tests/integration/` | `{feature}_integration_test.cpp` |
+| E2E | `tests/e2e/` | `{scenario}_e2e_test.cpp` |
 
 ## Contributing
 
 When adding new features:
 1. Write tests first (TDD approach recommended)
-2. Ensure all existing tests still pass
-3. Add integration tests for complex features
-4. Update this README with new test coverage
-
-## Test Philosophy
-
-- **Unit tests**: Fast, isolated, test single components
-- **Integration tests**: Test component interactions
-- **Keep tests simple**: Each test should verify one thing
-- **Descriptive names**: Test names should describe what they verify
-- **Independent tests**: Tests shouldn't depend on each other
+2. Place test file in appropriate `tests/unit/{subsystem}/` directory
+3. Use auto-registration pattern for test discovery
+4. Ensure all existing tests still pass: `./build/sumo_balls_test`
+5. Update this README if adding new subsystem

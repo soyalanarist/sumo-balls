@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
+#include <cstddef>
 #include <cstring>
+#include <string>
+#include <vector>
 
 namespace net {
 
@@ -15,6 +17,29 @@ enum class MessageType : std::uint8_t {
     State       = 4,
     Ping        = 5,
     Pong        = 6
+};
+
+enum class ParseError {
+    Success = 0,
+    PacketTooShort,
+    InvalidProtocolVersion,
+    InvalidFieldValue,
+    CorruptedData,
+    UnknownMessageType,
+    InvalidPlayerCount,
+    InvalidMessageStructure
+};
+
+struct ParseResult {
+    ParseError error{ParseError::Success};
+    std::string context;
+    std::size_t expectedBytes{0};
+    std::size_t actualBytes{0};
+    std::uint8_t expectedVersion{PROTOCOL_VERSION};
+    std::uint8_t actualVersion{PROTOCOL_VERSION};
+    std::string fieldName;
+
+    std::string getErrorMessage() const;
 };
 
 struct JoinAccept {

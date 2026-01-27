@@ -1,0 +1,20 @@
+#pragma once
+
+enum class ScreenTransition {
+    NONE,
+    TO_MAIN_MENU,
+    TO_LOGIN,
+    TO_HANDLE_SETUP,
+    TO_LOBBY,
+    TO_FRIENDS,
+    TO_MATCH,
+    TO_MATCH_SINGLEPLAYER,
+    TO_OPTIONS,
+    TO_MATCH_RESULTS,
+    RESUME_PREVIOUS,
+    PAUSE,
+    QUIT,
+    TOGGLE_FULLSCREEN,
+    SET_WINDOWED,
+    SET_FULLSCREEN
+};

@@ -1,0 +1,12 @@
+FROM golang:1.21-bullseye AS builder
+WORKDIR /app
+COPY coordinator/go.mod coordinator/go.sum ./
+RUN go mod download
+COPY coordinator/ .
+RUN go build -o coordinator-bin main.go
+
+FROM debian:bullseye-slim
+WORKDIR /app
+COPY --from=builder /app/coordinator-bin /app/coordinator-bin
+EXPOSE 8888
+CMD ["/app/coordinator-bin"]

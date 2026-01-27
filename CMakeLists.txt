@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Include project helper modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+include(CompilerWarnings)
+
 # Set default build type to Debug if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type (Debug or Release)" FORCE)
@@ -54,34 +58,39 @@ FetchContent_MakeAvailable(enet)
 add_executable(sumo_balls
     src/main.cpp
     src/core/Game.cpp
-    src/core/Screen.cpp
-    src/core/ScreenStack.cpp
     src/core/Settings.cpp
     src/core/SettingsManager.cpp
+    src/core/KeyBindings.cpp
     src/core/GraphicsContext.cpp
     src/core/ImGuiManager.cpp
+    src/core/Logger.cpp
+    src/core/Screen.cpp
+    src/core/ScreenStack.cpp
 
-    src/screens/GameScreen.cpp
-    src/screens/GameEndedScreen.cpp
-    src/screens/WelcomeScreen.cpp
-    src/screens/FriendsScreen.cpp
-    src/screens/LobbyScreen.cpp
-    src/screens/menus/MainMenu.cpp
-    src/screens/menus/OptionsMenu.cpp
-    src/screens/menus/PauseMenu.cpp
-    src/screens/menus/GameOverMenu.cpp
+    src/ui/scenes/MatchScene.cpp
+    src/ui/scenes/MatchResultsScene.cpp
+    src/ui/views/LoginView.cpp
+    src/ui/views/CreatePlayerView.cpp
+    src/ui/views/MainMenuView.cpp
+    src/ui/views/PauseMenuView.cpp
+    src/ui/views/SettingsView.cpp
+    src/ui/views/MatchResultsView.cpp
+    src/ui/views/FriendsView.cpp
+    src/ui/views/LobbyView.cpp
+
+    src/ui/components/UIComponents.cpp
 
     src/game/controllers/HumanController.cpp
     src/game/controllers/AIController.cpp
 
-    src/simulation/Simulation.cpp
+    src/game/simulation/Simulation.cpp
+    src/network/NetProtocol.cpp
     src/network/NetCommon.cpp
     src/network/NetServer.cpp
     src/network/NetClient.cpp
+    src/network/SocialManager.cpp
 
     src/systems/InputSystem.cpp
-    
-    src/ui/UIComponents.cpp
     
     # ImGui implementation files
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -96,6 +105,7 @@ add_executable(sumo_balls
 )
 
 target_include_directories(sumo_balls PRIVATE include)
+target_include_directories(sumo_balls PRIVATE src)
 target_include_directories(sumo_balls PRIVATE include/imgui/backends)
 target_include_directories(sumo_balls PRIVATE ${enet_SOURCE_DIR}/include)
 target_include_directories(sumo_balls PRIVATE ${imgui_SOURCE_DIR})
@@ -106,19 +116,27 @@ target_link_libraries(sumo_balls
     enet
 )
 
+# Apply compiler warnings
+enable_project_warnings(sumo_balls)
+
 add_executable(sumo_balls_server
     src/server_main.cpp
-    src/simulation/Simulation.cpp
+    src/network/NetProtocol.cpp
+    src/game/simulation/Simulation.cpp
     src/network/NetCommon.cpp
     src/network/NetServer.cpp
 )
 
-target_include_directories(sumo_balls_server PRIVATE include)
-target_include_directories(sumo_balls_server PRIVATE ${enet_SOURCE_DIR}/include)
+    target_include_directories(sumo_balls_server PRIVATE include)
+    target_include_directories(sumo_balls_server PRIVATE src)
+    target_include_directories(sumo_balls_server PRIVATE ${enet_SOURCE_DIR}/include)
 
 target_link_libraries(sumo_balls_server
     enet
 )
+
+# Apply compiler warnings
+enable_project_warnings(sumo_balls_server)
 
 if (MSVC)
     target_compile_options(sumo_balls_server PRIVATE /W4)
@@ -140,16 +158,22 @@ enable_testing()
 
 add_executable(sumo_balls_test
     tests/TestRunner.cpp
-    tests/test_physics.cpp
+    tests/unit/game/PhysicsTest.cpp
+    tests/unit/ScreenTransitionsTest.cpp
+    src/core/Screen.cpp
 )
 
 target_include_directories(sumo_balls_test PRIVATE include)
 target_include_directories(sumo_balls_test PRIVATE src)
+target_include_directories(sumo_balls_test PRIVATE tests)
 
 # Link SDL2 for tests that might need it
 target_link_libraries(sumo_balls_test
     SDL2::SDL2
 )
+
+# Apply compiler warnings
+enable_project_warnings(sumo_balls_test)
 
 if (MSVC)
     target_compile_options(sumo_balls_test PRIVATE /W4)
